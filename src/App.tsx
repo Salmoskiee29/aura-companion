@@ -7,11 +7,15 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ChatterProvider } from "@/contexts/ChatterContext";
+import { RoleAuthProvider } from "@/contexts/RoleAuthContext";
 import { AgeGateProvider } from "@/components/AgeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/RoleProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ChatterLogin from "./pages/ChatterLogin";
+import AdminLogin from "./pages/AdminLogin";
 import About from "./pages/About";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
@@ -34,6 +38,7 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
+          <RoleAuthProvider>
           <ChatterProvider>
           <AgeGateProvider>
           <TooltipProvider>
@@ -45,6 +50,10 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/about" element={<About />} />
+
+                {/* Role login pages */}
+                <Route path="/chatter-login" element={<ChatterLogin />} />
+                <Route path="/admin-login" element={<AdminLogin />} />
 
                 {/* Protected dashboard */}
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -60,20 +69,22 @@ const App = () => (
                 {/* Protected standalone pages */}
                 <Route path="/chat/:modelId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
 
+                {/* Role-protected dashboards */}
+                <Route path="/chatter" element={<RoleProtectedRoute requiredRole="chatter"><ChatterDashboard /></RoleProtectedRoute>} />
+                <Route path="/admin" element={<RoleProtectedRoute requiredRole="admin"><AdminDashboard /></RoleProtectedRoute>} />
+
                 {/* Redirect old routes */}
                 <Route path="/models" element={<Navigate to="/dashboard/models" replace />} />
                 <Route path="/billing" element={<Navigate to="/dashboard/billing" replace />} />
                 <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
 
-                {/* Admin */}
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/chatter" element={<ChatterDashboard />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
           </AgeGateProvider>
           </ChatterProvider>
+          </RoleAuthProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
