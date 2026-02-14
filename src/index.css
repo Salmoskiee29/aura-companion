@@ -56,8 +56,47 @@
     --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.4);
   }
 
-  .dark {
-    /* Same as root - dark by default */
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 10%;
+
+    --primary: 346 77% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 240 10% 20%;
+
+    --muted: 240 5% 90%;
+    --muted-foreground: 240 5% 45%;
+
+    --accent: 35 90% 55%;
+    --accent-foreground: 0 0% 5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 87%;
+    --input: 240 5% 87%;
+    --ring: 346 77% 50%;
+
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 240 10% 20%;
+    --sidebar-primary: 346 77% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 93%;
+    --sidebar-accent-foreground: 240 10% 20%;
+    --sidebar-border: 240 5% 87%;
+    --sidebar-ring: 346 77% 50%;
+
+    --surface-elevated: 0 0% 100%;
+    --shadow-glow: 0 0 40px -10px hsl(346 77% 50% / 0.15);
+    --shadow-card: 0 4px 24px -4px hsl(0 0% 0% / 0.08);
   }
 }
 

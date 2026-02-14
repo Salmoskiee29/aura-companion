@@ -19,6 +19,8 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-8">
             <Link to="/models" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Models</Link>
             <Link to="/billing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+            <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
+            <Link to="/settings" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/auth?mode=login">
