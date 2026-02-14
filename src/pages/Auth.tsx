@@ -48,10 +48,17 @@ const Auth = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <Link to="/" className="flex items-center justify-center gap-2 mb-10">
-          <Heart className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-display font-bold text-foreground">Lumière</span>
-        </Link>
+        <div className="flex items-center justify-between mb-10">
+          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowRight className="h-4 w-4 rotate-180" />
+            <span className="text-sm">Back</span>
+          </Link>
+          <Link to="/" className="flex items-center gap-2">
+            <Heart className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-display font-bold text-foreground">Lumière</span>
+          </Link>
+          <div className="w-14" />
+        </div>
 
         <div className="bg-card border border-border rounded-2xl p-8">
           <div className="flex bg-secondary rounded-xl p-1 mb-8">
