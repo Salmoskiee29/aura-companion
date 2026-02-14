@@ -1,21 +1,44 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { login, signup, isAuthenticated } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>(searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect if already logged in
+  if (isAuthenticated) {
+    navigate('/dashboard', { replace: true });
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // This will be connected to Lovable Cloud auth
-    toast.info('Backend not connected yet. Enable Lovable Cloud to activate authentication.');
+    if (!email || !password) return;
+    setLoading(true);
+    try {
+      if (mode === 'login') {
+        await login(email, password);
+      } else {
+        await signup(email, password);
+      }
+      toast.success(mode === 'login' ? 'Welcome back!' : 'Account created!');
+      navigate('/dashboard');
+    } catch {
+      toast.error('Something went wrong.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -25,14 +48,12 @@ const Auth = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <Link to="/" className="flex items-center justify-center gap-2 mb-10">
           <Heart className="h-8 w-8 text-primary" />
           <span className="text-2xl font-display font-bold text-foreground">Lumière</span>
         </Link>
 
         <div className="bg-card border border-border rounded-2xl p-8">
-          {/* Toggle */}
           <div className="flex bg-secondary rounded-xl p-1 mb-8">
             <button
               onClick={() => setMode('login')}
@@ -93,9 +114,13 @@ const Auth = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base">
-              {mode === 'login' ? 'Log In' : 'Start Free Trial'}
-              <ArrowRight className="ml-2 h-4 w-4" />
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base"
+            >
+              {loading ? 'Please wait...' : mode === 'login' ? 'Log In' : 'Start Free Trial'}
+              {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </Button>
           </form>
         </div>
