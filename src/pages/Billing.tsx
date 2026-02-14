@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Check, Crown, Sparkles, Zap } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const plans = [
@@ -35,22 +34,7 @@ const plans = [
 
 const Billing = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 glass-card border-b">
-        <div className="container mx-auto px-4 h-16 flex items-center gap-4">
-          <Link to="/">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground">Lumière</span>
-          </div>
-        </div>
-      </nav>
-
-      <div className="container mx-auto px-4 py-16">
+    <div className="p-6 md:p-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -109,7 +93,6 @@ const Billing = () => {
             </motion.div>
           ))}
         </div>
-      </div>
     </div>
   );
 };

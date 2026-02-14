@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { motion } from 'framer-motion';
 import {
   Heart, User, Palette, Globe, CreditCard, Sparkles, Camera,
@@ -31,23 +32,7 @@ const Settings = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-2">
-              <Heart className="h-6 w-6 text-primary" />
-              <span className="font-display font-bold text-foreground text-lg">Lumière</span>
-            </Link>
-          </div>
-          <Link to="/models" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back
-          </Link>
-        </div>
-      </nav>
-
-      <div className="pt-24 pb-12 px-4 max-w-5xl mx-auto">
+    <div className="p-6 md:p-8 max-w-5xl mx-auto">
         <h1 className="text-3xl font-display font-bold text-foreground mb-8">{t('settings.title')}</h1>
 
         <div className="flex flex-col md:flex-row gap-6">
@@ -242,7 +227,6 @@ const Settings = () => {
               </motion.div>
             )}
           </main>
-        </div>
       </div>
     </div>
   );
