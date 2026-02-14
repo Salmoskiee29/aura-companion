@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare, Users, Star, LogOut, Heart,
@@ -6,12 +7,20 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChatter } from '@/contexts/ChatterContext';
+import { useRoleAuth } from '@/contexts/RoleAuthContext';
 
 const ChatterDashboard = () => {
+  const navigate = useNavigate();
+  const { logoutChatter } = useRoleAuth();
   const {
     chatters, conversations, notifications,
     addChatterReply, toggleChatterStatus, dismissNotification,
   } = useChatter();
+
+  const handleLogout = () => {
+    logoutChatter();
+    navigate('/chatter-login');
+  };
 
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -44,7 +53,7 @@ const ChatterDashboard = () => {
               <Heart className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground">Chatter Panel</span>
             </div>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
+            <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground transition-colors">
               <LogOut className="h-4 w-4" />
             </button>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Users, MessageSquare, DollarSign, Activity,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { mockModels } from '@/data/models';
+import { useRoleAuth } from '@/contexts/RoleAuthContext';
 
 type AdminTab = 'dashboard' | 'models' | 'conversations' | 'users' | 'billing';
 
@@ -27,7 +29,14 @@ const sidebarItems = [
 ];
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { logoutAdmin } = useRoleAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+
+  const handleLogout = () => {
+    logoutAdmin();
+    navigate('/admin-login');
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -56,7 +65,7 @@ const AdminDashboard = () => {
           ))}
         </nav>
         <div className="p-4 border-t border-border">
-          <button className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
             <LogOut className="h-4 w-4" />
             Log Out
           </button>
