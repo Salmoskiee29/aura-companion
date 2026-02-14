@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Send, Heart, Lock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, Send, Lock } from 'lucide-react';
 import { mockModels } from '@/data/models';
 import { PaywallModal } from '@/components/chat/PaywallModal';
 
@@ -65,9 +64,8 @@ const Chat = () => {
     const newCount = freeMessagesUsed + 1;
     setFreeMessagesUsed(newCount);
 
-    // Simulate typing
     setIsTyping(true);
-    const delay = 1000 + Math.random() * 3000;
+    const delay = 1500 + Math.random() * 3000;
     setTimeout(() => {
       setIsTyping(false);
       const reply: ChatMessage = {
@@ -78,7 +76,6 @@ const Chat = () => {
       };
       setMessages(prev => [...prev, reply]);
 
-      // Check if paywall should show after this reply
       if (!isSubscribed && newCount >= FREE_MESSAGE_LIMIT) {
         setTimeout(() => setShowPaywall(true), 1500);
       }
@@ -90,22 +87,24 @@ const Chat = () => {
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="glass-card border-b px-4 py-3 flex items-center gap-3 shrink-0">
-        <Link to="/models">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+      <div className="glass-card border-b border-border/50 px-4 py-3 flex items-center gap-3 shrink-0">
+        <Link to="/dashboard/models">
+          <button className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-xl hover:bg-secondary">
             <ArrowLeft className="h-5 w-5" />
-          </Button>
+          </button>
         </Link>
-        <img src={model.avatar} alt={model.name} className="w-10 h-10 rounded-full object-cover border-2 border-primary/30" />
+        <div className="relative">
+          <img src={model.avatar} alt={model.name} className="w-11 h-11 rounded-full object-cover border-2 border-primary/30" />
+          {model.online && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-online border-2 border-background" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-foreground">{model.name}</h2>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-xs text-muted-foreground">Online</span>
-          </div>
+          <span className="text-xs text-muted-foreground">{model.online ? 'Online now' : 'Away'}</span>
         </div>
         {!isSubscribed && (
-          <span className="text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full">
+          <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
             {remainingFree} free left
           </span>
         )}
@@ -117,17 +116,18 @@ const Chat = () => {
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div className={`max-w-[80%] md:max-w-[60%] ${
                 msg.sender === 'user'
                   ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-                  : 'bg-card border border-border text-card-foreground rounded-2xl rounded-bl-md'
+                  : 'glass-card text-card-foreground rounded-2xl rounded-bl-md'
               } px-4 py-3`}>
-                <p className="text-sm leading-relaxed">{msg.text}</p>
-                <p className={`text-[10px] mt-1 ${msg.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                <p className="text-[15px] leading-relaxed">{msg.text}</p>
+                <p className={`text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
                   {msg.time}
                 </p>
               </div>
@@ -137,15 +137,15 @@ const Chat = () => {
 
         {isTyping && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
             className="flex justify-start"
           >
-            <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="glass-card rounded-2xl rounded-bl-md px-5 py-3.5">
               <div className="flex gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </motion.div>
@@ -154,7 +154,7 @@ const Chat = () => {
       </div>
 
       {/* Input */}
-      <div className="glass-card border-t px-4 py-3 shrink-0">
+      <div className="glass-card border-t border-border/50 px-4 py-3 shrink-0">
         <div className="flex gap-2 items-center max-w-3xl mx-auto">
           <input
             type="text"
@@ -163,20 +163,19 @@ const Chat = () => {
             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             placeholder={!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT ? 'Subscribe to continue...' : 'Type a message...'}
             disabled={!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT}
-            className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50"
+            className="flex-1 bg-secondary border border-border rounded-2xl px-5 py-3.5 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 disabled:opacity-50 transition-all"
           />
-          <Button
+          <button
             onClick={sendMessage}
             disabled={!input.trim() || (!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT)}
-            size="icon"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 w-12 shrink-0"
+            className="h-12 w-12 rounded-2xl btn-premium text-primary-foreground flex items-center justify-center shrink-0 disabled:opacity-50 disabled:pointer-events-none"
           >
             {!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT ? (
               <Lock className="h-5 w-5" />
             ) : (
               <Send className="h-5 w-5" />
             )}
-          </Button>
+          </button>
         </div>
       </div>
 

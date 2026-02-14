@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AgeGateProvider } from "@/components/AgeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import Landing from "./pages/Landing";
@@ -32,6 +33,7 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
+          <AgeGateProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -68,6 +70,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
+          </AgeGateProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
