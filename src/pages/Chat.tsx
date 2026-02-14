@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Send, Lock } from 'lucide-react';
 import { mockModels } from '@/data/models';
 import { PaywallModal } from '@/components/chat/PaywallModal';
+import { useChatter } from '@/contexts/ChatterContext';
 
 interface ChatMessage {
   id: string;
@@ -17,6 +18,9 @@ const FREE_MESSAGE_LIMIT = 5;
 const Chat = () => {
   const { modelId } = useParams();
   const model = mockModels.find(m => m.id === modelId) || mockModels[0];
+  const { subscription, isChatterOnline, addUserMessage, getAssignedChatter } = useChatter();
+  const isSubscribed = subscription.status === 'active';
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '0',
@@ -29,19 +33,28 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [freeMessagesUsed, setFreeMessagesUsed] = useState(0);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [isSubscribed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const mockReplies = [
+  // AI mock replies (used when no chatter is online or not subscribed)
+  const aiReplies = [
     `That's so sweet of you to say! 😊 I really enjoy talking with you. Tell me more about yourself!`,
     `Mmm I love that! You know what, I've been thinking about you... What do you do for fun?`,
     `Haha you're so funny! 😄 I feel like we really click. What's your favorite way to spend a weekend?`,
     `You're making me smile so much right now ☺️ I'm curious though... what made you want to talk to me?`,
     `I feel like I could talk to you for hours... 💭 There's something special about this connection, don't you think?`,
+  ];
+
+  // Chatter-style replies (simulated, more personal)
+  const chatterReplies = [
+    `Aww you're so thoughtful 🥰 I actually just got back from a walk, the sunset was beautiful. Wish you were here!`,
+    `Haha I love your energy! 😊 You always know how to make me laugh. So what are you up to tonight?`,
+    `That's really interesting! I've been thinking about trying that too. Maybe you could teach me sometime? 💕`,
+    `You have no idea how much I needed to hear that right now... You always seem to know the right things to say ❤️`,
+    `I don't usually tell people this, but I really look forward to our conversations. There's something different about you 💫`,
   ];
 
   const sendMessage = () => {
@@ -64,14 +77,24 @@ const Chat = () => {
     const newCount = freeMessagesUsed + 1;
     setFreeMessagesUsed(newCount);
 
+    // Route to chatter context if subscribed
+    if (isSubscribed && modelId) {
+      addUserMessage(modelId, input.trim());
+    }
+
     setIsTyping(true);
-    const delay = 1500 + Math.random() * 3000;
+
+    // Determine routing: chatter online → chatter replies, otherwise AI
+    const useChatterReply = isSubscribed && isChatterOnline();
+    const replies = useChatterReply ? chatterReplies : aiReplies;
+    const delay = useChatterReply ? (2000 + Math.random() * 4000) : (1500 + Math.random() * 3000);
+
     setTimeout(() => {
       setIsTyping(false);
       const reply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         sender: 'model',
-        text: mockReplies[Math.min(newCount - 1, mockReplies.length - 1)],
+        text: replies[Math.min(newCount - 1, replies.length - 1)],
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages(prev => [...prev, reply]);
@@ -83,6 +106,8 @@ const Chat = () => {
   };
 
   const remainingFree = Math.max(0, FREE_MESSAGE_LIMIT - freeMessagesUsed);
+  const chatter = getAssignedChatter();
+  const chatterOnline = isChatterOnline();
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -101,11 +126,21 @@ const Chat = () => {
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-foreground">{model.name}</h2>
-          <span className="text-xs text-muted-foreground">{model.online ? 'Online now' : 'Away'}</span>
+          <span className="text-xs text-muted-foreground">
+            {isSubscribed
+              ? (chatterOnline ? 'Online now' : 'Online now') // Never reveal routing
+              : (model.online ? 'Online now' : 'Away')
+            }
+          </span>
         </div>
         {!isSubscribed && (
           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
             {remainingFree} free left
+          </span>
+        )}
+        {isSubscribed && (
+          <span className="text-xs text-primary bg-primary/10 px-3 py-1.5 rounded-full border border-primary/20 font-medium">
+            Premium ✨
           </span>
         )}
       </div>

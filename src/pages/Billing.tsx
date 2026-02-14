@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useChatter } from '@/contexts/ChatterContext';
+import { useNavigate } from 'react-router-dom';
 
 const plans = [
   {
@@ -11,6 +13,7 @@ const plans = [
     features: ['5 messages total', '1 companion', 'Basic chat experience'],
     icon: Sparkles,
     highlight: false,
+    planId: 'free',
   },
   {
     name: 'Premium',
@@ -20,6 +23,7 @@ const plans = [
     features: ['Unlimited messages', 'All companions', 'Priority response speed', 'Image sharing', 'Chat history'],
     icon: Crown,
     highlight: true,
+    planId: 'premium',
   },
   {
     name: 'VIP',
@@ -29,27 +33,53 @@ const plans = [
     features: ['Everything in Premium', 'Exclusive companions', 'Voice messages', 'Custom personalities', 'Priority support', 'Early access to new features'],
     icon: Zap,
     highlight: false,
+    planId: 'vip',
   },
 ];
 
 const Billing = () => {
+  const { subscription, subscribe, cancelSubscription } = useChatter();
+  const navigate = useNavigate();
+
+  const handleSubscribe = (planId: string) => {
+    if (planId === 'free') return;
+    subscribe(planId);
+    // Navigate to models so user can start chatting
+    setTimeout(() => navigate('/dashboard/models'), 1500);
+  };
+
+  const isActive = subscription.status === 'active';
+
   return (
     <div className="p-6 md:p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-16"
-        >
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
-            Choose Your <span className="text-gradient-primary">Plan</span>
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-            Start free, upgrade anytime. Cancel whenever you want.
-          </p>
-        </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-16"
+      >
+        <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
+          Choose Your <span className="text-gradient-primary">Plan</span>
+        </h1>
+        <p className="text-muted-foreground text-lg max-w-lg mx-auto">
+          Start free, upgrade anytime. Cancel whenever you want.
+        </p>
+        {isActive && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium"
+          >
+            <Crown className="h-4 w-4" />
+            Active: {subscription.plan?.charAt(0).toUpperCase()}{subscription.plan?.slice(1)} Plan
+          </motion.div>
+        )}
+      </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((plan, i) => (
+      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {plans.map((plan, i) => {
+          const isCurrent = (plan.planId === 'free' && !isActive) || (isActive && subscription.plan === plan.planId);
+
+          return (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 20 }}
@@ -83,16 +113,31 @@ const Billing = () => {
                   </li>
                 ))}
               </ul>
-              <Button className={`w-full py-5 ${
-                plan.highlight
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}>
-                {plan.price === '$0' ? 'Current Plan' : 'Subscribe'}
-              </Button>
+              {isCurrent ? (
+                <Button
+                  className="w-full py-5 bg-secondary text-secondary-foreground"
+                  disabled={plan.planId === 'free'}
+                  onClick={() => { if (isActive) cancelSubscription(); }}
+                >
+                  {isActive && plan.planId !== 'free' ? 'Cancel Plan' : 'Current Plan'}
+                </Button>
+              ) : (
+                <Button
+                  className={`w-full py-5 ${
+                    plan.highlight
+                      ? 'btn-premium text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                  onClick={() => handleSubscribe(plan.planId)}
+                  disabled={plan.planId === 'free'}
+                >
+                  {plan.planId === 'free' ? 'Current Plan' : 'Subscribe'}
+                </Button>
+              )}
             </motion.div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
