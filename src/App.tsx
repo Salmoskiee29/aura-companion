@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ChatterProvider } from "@/contexts/ChatterContext";
 import { AgeGateProvider } from "@/components/AgeGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -33,6 +34,7 @@ const App = () => (
     <ThemeProvider>
       <LanguageProvider>
         <AuthProvider>
+          <ChatterProvider>
           <AgeGateProvider>
           <TooltipProvider>
             <Toaster />
@@ -71,6 +73,7 @@ const App = () => (
             </BrowserRouter>
           </TooltipProvider>
           </AgeGateProvider>
+          </ChatterProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>
