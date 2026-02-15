@@ -17,7 +17,7 @@ export default function DashboardHome() {
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-          Welcome back, <span className="text-gradient-primary">{user?.displayName}</span>
+          Welcome back, <span className="text-gradient-primary">{user?.displayName || 'there'}</span>
         </h1>
         <p className="text-muted-foreground mb-8">What would you like to do today?</p>
 
