@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -22,10 +22,11 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated && user) {
-    navigate(getRoleRedirect(user.role), { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      navigate(getRoleRedirect(user.role), { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +39,10 @@ const Auth = () => {
         navigate(getRoleRedirect(authUser.role));
       } else {
         await signup(email, password);
-        toast.success('Check your email to confirm your account!');
+        toast.success('Account created! Redirecting...');
+        // Auto-confirm is on, so we can login immediately
+        const authUser = await login(email, password);
+        navigate(getRoleRedirect(authUser.role));
       }
     } catch (err: any) {
       toast.error(err?.message || 'Something went wrong.');
