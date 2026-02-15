@@ -190,7 +190,7 @@ const Settings = () => {
                         }`}
                       >
                         <span className="text-lg">
-                          {lang === 'en' ? '🇺🇸' : lang === 'es' ? '🇪🇸' : '🇵🇭'}
+                          {lang === 'en-US' ? '🇺🇸' : lang === 'en-UK' ? '🇬🇧' : lang === 'zh-CN' ? '🇨🇳' : lang === 'zh-TW' ? '🇹🇼' : lang === 'es' ? '🇪🇸' : lang === 'ja' ? '🇯🇵' : lang === 'ko' ? '🇰🇷' : lang === 'de' ? '🇩🇪' : lang === 'fr' ? '🇫🇷' : '🌐'}
                         </span>
                         <span className={`text-sm font-medium ${language === lang ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {languageNames[lang]}

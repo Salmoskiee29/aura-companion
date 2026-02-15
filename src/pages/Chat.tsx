@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Send, Lock } from 'lucide-react';
-import { mockModels } from '@/data/models';
-import { PaywallModal } from '@/components/chat/PaywallModal';
-import { useChatter } from '@/contexts/ChatterContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ChatMessage {
   id: string;
@@ -13,101 +13,243 @@ interface ChatMessage {
   time: string;
 }
 
-const FREE_MESSAGE_LIMIT = 5;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 const Chat = () => {
   const { modelId } = useParams();
-  const model = mockModels.find(m => m.id === modelId) || mockModels[0];
-  const { subscription, isChatterOnline, addUserMessage, getAssignedChatter } = useChatter();
-  const isSubscribed = subscription.status === 'active';
-
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: '0',
-      sender: 'model',
-      text: `Hey there! 💕 I'm ${model.name}. So glad you're here. What's on your mind today?`,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
+  const { user } = useAuth();
+  const [model, setModel] = useState<{ id: string; name: string; avatar: string; online: boolean } | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [freeMessagesUsed, setFreeMessagesUsed] = useState(0);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [subscription, setSubscription] = useState<{ status: string; free_messages_used: number; free_messages_limit: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isSubscribed = subscription?.status === 'active';
+  const freeLeft = Math.max(0, (subscription?.free_messages_limit ?? 5) - (subscription?.free_messages_used ?? 0));
+  const isLocked = !isSubscribed && freeLeft <= 0;
+
+  // Load model, subscription, and conversation
+  useEffect(() => {
+    if (!modelId || !user) return;
+
+    const init = async () => {
+      // Fetch model
+      const { data: m } = await supabase.from('companion_models').select('id, name, avatar, online').eq('id', modelId).single();
+      if (m) setModel(m);
+
+      // Fetch subscription
+      const { data: sub } = await supabase.from('subscriptions').select('status, free_messages_used, free_messages_limit').eq('user_id', user.id).single();
+      if (sub) setSubscription(sub);
+
+      // Find or create conversation
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('model_id', modelId)
+        .limit(1)
+        .single();
+
+      let convId: string;
+      if (existing) {
+        convId = existing.id;
+      } else {
+        const { data: newConv } = await supabase
+          .from('conversations')
+          .insert({ user_id: user.id, model_id: modelId })
+          .select('id')
+          .single();
+        convId = newConv?.id || '';
+      }
+      setConversationId(convId);
+
+      // Load existing messages
+      if (convId) {
+        const { data: msgs } = await supabase
+          .from('messages')
+          .select('id, message, sender_type, created_at')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
+
+        if (msgs && msgs.length > 0) {
+          setMessages(msgs.map(msg => ({
+            id: msg.id,
+            sender: msg.sender_type === 'user' ? 'user' : 'model',
+            text: msg.message,
+            time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          })));
+        } else if (m) {
+          // Welcome message
+          setMessages([{
+            id: '0',
+            sender: 'model',
+            text: `Hey there! 💕 I'm ${m.name}. So glad you're here. What's on your mind today?`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }]);
+        }
+      }
+    };
+    init();
+  }, [modelId, user]);
+
+  // Realtime messages
+  useEffect(() => {
+    if (!conversationId) return;
+    const channel = supabase
+      .channel(`messages-${conversationId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, (payload) => {
+        const msg = payload.new as any;
+        if (msg.sender_type !== 'user') {
+          setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, {
+              id: msg.id,
+              sender: 'model' as const,
+              text: msg.message,
+              time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }];
+          });
+          setIsTyping(false);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [conversationId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // AI mock replies (used when no chatter is online or not subscribed)
-  const aiReplies = [
-    `That's so sweet of you to say! 😊 I really enjoy talking with you. Tell me more about yourself!`,
-    `Mmm I love that! You know what, I've been thinking about you... What do you do for fun?`,
-    `Haha you're so funny! 😄 I feel like we really click. What's your favorite way to spend a weekend?`,
-    `You're making me smile so much right now ☺️ I'm curious though... what made you want to talk to me?`,
-    `I feel like I could talk to you for hours... 💭 There's something special about this connection, don't you think?`,
-  ];
-
-  // Chatter-style replies (simulated, more personal)
-  const chatterReplies = [
-    `Aww you're so thoughtful 🥰 I actually just got back from a walk, the sunset was beautiful. Wish you were here!`,
-    `Haha I love your energy! 😊 You always know how to make me laugh. So what are you up to tonight?`,
-    `That's really interesting! I've been thinking about trying that too. Maybe you could teach me sometime? 💕`,
-    `You have no idea how much I needed to hear that right now... You always seem to know the right things to say ❤️`,
-    `I don't usually tell people this, but I really look forward to our conversations. There's something different about you 💫`,
-  ];
-
-  const sendMessage = () => {
-    if (!input.trim()) return;
-
-    if (!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT) {
-      setShowPaywall(true);
-      return;
-    }
+  const sendMessage = async () => {
+    if (!input.trim() || !conversationId || !user || isLocked) return;
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       sender: 'user',
       text: input.trim(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages(prev => [...prev, userMsg]);
+    const messageText = input.trim();
     setInput('');
-    const newCount = freeMessagesUsed + 1;
-    setFreeMessagesUsed(newCount);
-
-    // Route to chatter context if subscribed
-    if (isSubscribed && modelId) {
-      addUserMessage(modelId, input.trim());
-    }
-
     setIsTyping(true);
 
-    // Determine routing: chatter online → chatter replies, otherwise AI
-    const useChatterReply = isSubscribed && isChatterOnline();
-    const replies = useChatterReply ? chatterReplies : aiReplies;
-    const delay = useChatterReply ? (2000 + Math.random() * 4000) : (1500 + Math.random() * 3000);
+    // Save user message to DB
+    await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      message: messageText,
+      sender_type: 'user',
+      sender_id: user.id,
+    });
 
-    setTimeout(() => {
-      setIsTyping(false);
-      const reply: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: 'model',
-        text: replies[Math.min(newCount - 1, replies.length - 1)],
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, reply]);
+    // Call AI chat edge function with streaming
+    try {
+      const chatHistory = messages.filter(m => m.id !== '0').map(m => ({
+        role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: m.text,
+      }));
+      chatHistory.push({ role: 'user', content: messageText });
 
-      if (!isSubscribed && newCount >= FREE_MESSAGE_LIMIT) {
-        setTimeout(() => setShowPaywall(true), 1500);
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ messages: chatHistory, modelId, conversationId }),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        if (resp.status === 403) {
+          toast.error(errData.error || 'Free message limit reached. Please subscribe.');
+          setIsTyping(false);
+          return;
+        }
+        if (resp.status === 429) {
+          toast.error('Rate limited. Please try again in a moment.');
+          setIsTyping(false);
+          return;
+        }
+        throw new Error(errData.error || 'Chat error');
       }
-    }, delay);
+
+      // Stream response
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error('No stream');
+      const decoder = new TextDecoder();
+      let textBuffer = '';
+      let assistantText = '';
+      const assistantId = crypto.randomUUID();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line.startsWith(':') || line.trim() === '') continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantText += content;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.id === assistantId) {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, text: assistantText } : m);
+                }
+                return [...prev, { id: assistantId, sender: 'model' as const, text: assistantText, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }];
+              });
+            }
+          } catch {
+            textBuffer = line + '\n' + textBuffer;
+            break;
+          }
+        }
+      }
+
+      setIsTyping(false);
+
+      // Save AI response to DB
+      if (assistantText) {
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          message: assistantText,
+          sender_type: 'model',
+        });
+        // Update free messages count locally
+        if (subscription && subscription.status !== 'active') {
+          setSubscription(prev => prev ? { ...prev, free_messages_used: prev.free_messages_used + 1 } : prev);
+        }
+      }
+    } catch (err: any) {
+      console.error('Chat error:', err);
+      setIsTyping(false);
+      toast.error(err.message || 'Failed to get response');
+    }
   };
 
-  const remainingFree = Math.max(0, FREE_MESSAGE_LIMIT - freeMessagesUsed);
-  const chatter = getAssignedChatter();
-  const chatterOnline = isChatterOnline();
+  if (!model) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -121,21 +263,16 @@ const Chat = () => {
         <div className="relative">
           <img src={model.avatar} alt={model.name} className="w-11 h-11 rounded-full object-cover border-2 border-primary/30" />
           {model.online && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-online border-2 border-background" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[hsl(var(--online))] border-2 border-background" />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-foreground">{model.name}</h2>
-          <span className="text-xs text-muted-foreground">
-            {isSubscribed
-              ? (chatterOnline ? 'Online now' : 'Online now') // Never reveal routing
-              : (model.online ? 'Online now' : 'Away')
-            }
-          </span>
+          <span className="text-xs text-muted-foreground">{model.online ? 'Online now' : 'Away'}</span>
         </div>
         {!isSubscribed && (
           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
-            {remainingFree} free left
+            {freeLeft} free left
           </span>
         )}
         {isSubscribed && (
@@ -161,7 +298,7 @@ const Chat = () => {
                   ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
                   : 'glass-card text-card-foreground rounded-2xl rounded-bl-md'
               } px-4 py-3`}>
-                <p className="text-[15px] leading-relaxed">{msg.text}</p>
+                <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 <p className={`text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
                   {msg.time}
                 </p>
@@ -171,11 +308,7 @@ const Chat = () => {
         </AnimatePresence>
 
         {isTyping && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start"
-          >
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start">
             <div className="glass-card rounded-2xl rounded-bl-md px-5 py-3.5">
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -195,31 +328,20 @@ const Chat = () => {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT ? 'Subscribe to continue...' : 'Type a message...'}
-            disabled={!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+            placeholder={isLocked ? 'Subscribe to continue...' : 'Type a message...'}
+            disabled={isLocked}
             className="flex-1 bg-secondary border border-border rounded-2xl px-5 py-3.5 text-[15px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 disabled:opacity-50 transition-all"
           />
           <button
             onClick={sendMessage}
-            disabled={!input.trim() || (!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT)}
+            disabled={!input.trim() || isLocked || isTyping}
             className="h-12 w-12 rounded-2xl btn-premium text-primary-foreground flex items-center justify-center shrink-0 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {!isSubscribed && freeMessagesUsed >= FREE_MESSAGE_LIMIT ? (
-              <Lock className="h-5 w-5" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
+            {isLocked ? <Lock className="h-5 w-5" /> : <Send className="h-5 w-5" />}
           </button>
         </div>
       </div>
-
-      {/* Paywall */}
-      <PaywallModal
-        open={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        modelName={model.name}
-      />
     </div>
   );
 };
