@@ -16,7 +16,6 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in
   if (isAuthenticated) {
     navigate('/dashboard', { replace: true });
     return null;
@@ -29,13 +28,14 @@ const Auth = () => {
     try {
       if (mode === 'login') {
         await login(email, password);
+        toast.success('Welcome back!');
+        navigate('/dashboard');
       } else {
         await signup(email, password);
+        toast.success('Check your email to confirm your account!');
       }
-      toast.success(mode === 'login' ? 'Welcome back!' : 'Account created!');
-      navigate('/dashboard');
-    } catch {
-      toast.error('Something went wrong.');
+    } catch (err: any) {
+      toast.error(err?.message || 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -109,6 +109,7 @@ const Auth = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  minLength={6}
                   className="w-full bg-secondary border border-border rounded-xl pl-10 pr-12 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 <button
