@@ -8,3 +8,15 @@ verify_jwt = false
 
 [functions.assign-chatter]
 verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.add-gems]
+verify_jwt = false

@@ -44,18 +44,31 @@ serve(async (req) => {
       });
     }
 
-    // Check subscription / free message limit
+    // Check subscription or gem balance
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("*")
       .eq("user_id", userId)
       .single();
 
-    if (sub && sub.status !== "active" && sub.free_messages_used >= sub.free_messages_limit) {
-      return new Response(JSON.stringify({ error: "Free message limit reached. Please subscribe." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (sub && sub.status !== "active") {
+      // Check gem balance
+      const serviceClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: wallet } = await serviceClient
+        .from("gem_wallets")
+        .select("balance")
+        .eq("user_id", userId)
+        .single();
+
+      if (!wallet || wallet.balance <= 0) {
+        return new Response(JSON.stringify({ error: "No gems remaining. Please subscribe or purchase gems." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get model system prompt if modelId provided
@@ -113,16 +126,32 @@ serve(async (req) => {
       });
     }
 
-    // Increment free messages used if on free plan
+    // Deduct gem if on free plan
     if (sub && sub.status !== "active") {
       const serviceClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
-      await serviceClient
-        .from("subscriptions")
-        .update({ free_messages_used: (sub.free_messages_used || 0) + 1 })
-        .eq("user_id", userId);
+      const { data: wallet } = await serviceClient
+        .from("gem_wallets")
+        .select("balance")
+        .eq("user_id", userId)
+        .single();
+
+      if (wallet) {
+        await serviceClient
+          .from("gem_wallets")
+          .update({ balance: Math.max(0, wallet.balance - 1) })
+          .eq("user_id", userId);
+      }
+
+      // Record transaction
+      await serviceClient.from("gem_transactions").insert({
+        user_id: userId,
+        amount: -1,
+        type: "spent",
+        description: "AI chat message",
+      });
     }
 
     return new Response(response.body, {

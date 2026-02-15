@@ -23,12 +23,12 @@ const Chat = () => {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [subscription, setSubscription] = useState<{ status: string; free_messages_used: number; free_messages_limit: number } | null>(null);
+  const [subscription, setSubscription] = useState<{ status: string; tier: string } | null>(null);
+  const [gemBalance, setGemBalance] = useState<number>(10);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isSubscribed = subscription?.status === 'active';
-  const freeLeft = Math.max(0, (subscription?.free_messages_limit ?? 5) - (subscription?.free_messages_used ?? 0));
-  const isLocked = !isSubscribed && freeLeft <= 0;
+  const isLocked = !isSubscribed && gemBalance <= 0;
 
   // Load model, subscription, and conversation
   useEffect(() => {
@@ -40,8 +40,12 @@ const Chat = () => {
       if (m) setModel(m);
 
       // Fetch subscription
-      const { data: sub } = await supabase.from('subscriptions').select('status, free_messages_used, free_messages_limit').eq('user_id', user.id).single();
+      const { data: sub } = await supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single();
       if (sub) setSubscription(sub);
+
+      // Fetch gem balance
+      const { data: wallet } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
+      if (wallet) setGemBalance(wallet.balance);
 
       // Find or create conversation
       const { data: existing } = await supabase
@@ -231,9 +235,9 @@ const Chat = () => {
           message: assistantText,
           sender_type: 'model',
         });
-        // Update free messages count locally
+        // Deduct gem if on free plan
         if (subscription && subscription.status !== 'active') {
-          setSubscription(prev => prev ? { ...prev, free_messages_used: prev.free_messages_used + 1 } : prev);
+          setGemBalance(prev => Math.max(0, prev - 1));
         }
       }
     } catch (err: any) {
@@ -272,7 +276,7 @@ const Chat = () => {
         </div>
         {!isSubscribed && (
           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
-            {freeLeft} free left
+            💎 {gemBalance} gems
           </span>
         )}
         {isSubscribed && (
