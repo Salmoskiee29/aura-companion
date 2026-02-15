@@ -142,6 +142,57 @@ export type Database = {
           },
         ]
       }
+      gem_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string
+          id?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gem_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           conversation_id: string
@@ -211,6 +262,8 @@ export type Database = {
         Row: {
           created_at: string
           current_period_end: string | null
+          daily_human_replies_limit: number
+          daily_human_replies_used: number
           free_messages_limit: number
           free_messages_used: number
           id: string
@@ -218,12 +271,15 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          tier: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           current_period_end?: string | null
+          daily_human_replies_limit?: number
+          daily_human_replies_used?: number
           free_messages_limit?: number
           free_messages_used?: number
           id?: string
@@ -231,12 +287,15 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          tier?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           current_period_end?: string | null
+          daily_human_replies_limit?: number
+          daily_human_replies_used?: number
           free_messages_limit?: number
           free_messages_used?: number
           id?: string
@@ -244,6 +303,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          tier?: string
           updated_at?: string
           user_id?: string
         }
