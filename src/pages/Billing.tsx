@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Crown, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useChatter } from '@/contexts/ChatterContext';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const plans = [
   {
@@ -38,25 +40,21 @@ const plans = [
 ];
 
 const Billing = () => {
-  const { subscription, subscribe, cancelSubscription } = useChatter();
-  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [subscription, setSubscription] = useState<{ status: string; plan: string } | null>(null);
 
-  const handleSubscribe = (planId: string) => {
-    if (planId === 'free') return;
-    subscribe(planId);
-    // Navigate to models so user can start chatting
-    setTimeout(() => navigate('/dashboard/models'), 1500);
-  };
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('subscriptions').select('status, plan').eq('user_id', user.id).single().then(({ data }) => {
+      if (data) setSubscription(data);
+    });
+  }, [user]);
 
-  const isActive = subscription.status === 'active';
+  const isActive = subscription?.status === 'active';
 
   return (
     <div className="p-6 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-16"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
         <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
           Choose Your <span className="text-gradient-primary">Plan</span>
         </h1>
@@ -64,37 +62,21 @@ const Billing = () => {
           Start free, upgrade anytime. Cancel whenever you want.
         </p>
         {isActive && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium"
-          >
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium">
             <Crown className="h-4 w-4" />
-            Active: {subscription.plan?.charAt(0).toUpperCase()}{subscription.plan?.slice(1)} Plan
+            Active: {subscription?.plan?.charAt(0).toUpperCase()}{subscription?.plan?.slice(1)} Plan
           </motion.div>
         )}
       </motion.div>
 
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {plans.map((plan, i) => {
-          const isCurrent = (plan.planId === 'free' && !isActive) || (isActive && subscription.plan === plan.planId);
+          const isCurrent = (plan.planId === 'free' && !isActive) || (isActive && subscription?.plan === plan.planId);
 
           return (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className={`rounded-2xl p-8 border relative ${
-                plan.highlight
-                  ? 'border-primary bg-primary/5 glow-primary'
-                  : 'border-border bg-card'
-              }`}
-            >
+            <motion.div key={plan.name} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className={`rounded-2xl p-8 border relative ${plan.highlight ? 'border-primary bg-primary/5 glow-primary' : 'border-border bg-card'}`}>
               {plan.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-                  Most Popular
-                </div>
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">Most Popular</div>
               )}
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                 <plan.icon className="h-6 w-6 text-primary" />
@@ -114,22 +96,14 @@ const Billing = () => {
                 ))}
               </ul>
               {isCurrent ? (
-                <Button
-                  className="w-full py-5 bg-secondary text-secondary-foreground"
-                  disabled={plan.planId === 'free'}
-                  onClick={() => { if (isActive) cancelSubscription(); }}
-                >
-                  {isActive && plan.planId !== 'free' ? 'Cancel Plan' : 'Current Plan'}
+                <Button className="w-full py-5 bg-secondary text-secondary-foreground" disabled>
+                  Current Plan
                 </Button>
               ) : (
                 <Button
-                  className={`w-full py-5 ${
-                    plan.highlight
-                      ? 'btn-premium text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                  onClick={() => handleSubscribe(plan.planId)}
+                  className={`w-full py-5 ${plan.highlight ? 'btn-premium text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
                   disabled={plan.planId === 'free'}
+                  onClick={() => toast.info('Stripe checkout coming soon!')}
                 >
                   {plan.planId === 'free' ? 'Current Plan' : 'Subscribe'}
                 </Button>
