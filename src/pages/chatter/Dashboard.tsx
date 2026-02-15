@@ -1,54 +1,151 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  MessageSquare, Users, Star, LogOut, Heart,
-  Send, Search, Bell, Wifi, WifiOff,
+  MessageSquare, Users, LogOut, Heart,
+  Send, Wifi, WifiOff, Sun, Moon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useChatter } from '@/contexts/ChatterContext';
-import { useRoleAuth } from '@/contexts/RoleAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface ConversationItem {
+  id: string;
+  user_id: string;
+  model_id: string;
+  user_email: string;
+  model_name: string;
+  created_at: string;
+}
+
+interface MessageItem {
+  id: string;
+  message: string;
+  sender_type: string;
+  created_at: string;
+}
 
 const ChatterDashboard = () => {
   const navigate = useNavigate();
-  const { logoutChatter } = useRoleAuth();
-  const {
-    chatters, conversations, notifications,
-    addChatterReply, toggleChatterStatus, dismissNotification,
-  } = useChatter();
+  const { logout, user } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [selectedConv, setSelectedConv] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [chatterStatus, setChatterStatus] = useState<'online' | 'offline'>('offline');
+  const [workload, setWorkload] = useState(0);
 
-  const handleLogout = () => {
-    logoutChatter();
-    navigate('/chatter-login');
+  // Fetch chatter's status
+  useEffect(() => {
+    if (!user) return;
+    const fetchStatus = async () => {
+      const { data } = await supabase
+        .from('chatters')
+        .select('status, active_conversations')
+        .eq('user_id', user.id)
+        .single();
+      if (data) {
+        setChatterStatus(data.status as 'online' | 'offline');
+        setWorkload(data.active_conversations);
+      }
+    };
+    fetchStatus();
+  }, [user]);
+
+  // Fetch assigned conversations
+  useEffect(() => {
+    if (!user) return;
+    const fetchConvs = async () => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('id, user_id, model_id, created_at')
+        .eq('assigned_chatter_id', user.id);
+      
+      if (data && data.length > 0) {
+        // Get user emails and model names
+        const userIds = [...new Set(data.map(c => c.user_id))];
+        const modelIds = [...new Set(data.map(c => c.model_id))];
+        
+        const { data: profiles } = await supabase.from('profiles').select('user_id, email').in('user_id', userIds);
+        const { data: models } = await supabase.from('companion_models').select('id, name').in('id', modelIds);
+        
+        const emailMap = new Map(profiles?.map(p => [p.user_id, p.email]) || []);
+        const modelMap = new Map(models?.map(m => [m.id, m.name]) || []);
+
+        setConversations(data.map(c => ({
+          ...c,
+          user_email: emailMap.get(c.user_id) || 'Unknown',
+          model_name: modelMap.get(c.model_id) || 'Unknown',
+        })));
+      } else {
+        setConversations([]);
+      }
+    };
+    fetchConvs();
+  }, [user]);
+
+  // Fetch messages for selected conversation
+  useEffect(() => {
+    if (!selectedConv) return;
+    const fetchMessages = async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('id, message, sender_type, created_at')
+        .eq('conversation_id', selectedConv)
+        .order('created_at', { ascending: true });
+      setMessages(data || []);
+    };
+    fetchMessages();
+  }, [selectedConv]);
+
+  const toggleStatus = async () => {
+    if (!user) return;
+    const newStatus = chatterStatus === 'online' ? 'offline' : 'online';
+    await supabase
+      .from('chatters')
+      .update({ status: newStatus })
+      .eq('user_id', user.id);
+    setChatterStatus(newStatus);
+    toast.success(`You are now ${newStatus}`);
   };
 
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
-  const [activeChatterId, setActiveChatterId] = useState(chatters.find(c => c.status === 'online')?.id || chatters[0]?.id);
-
-  // Select first conversation on load
-  useEffect(() => {
-    if (!selectedConversation && conversations.length > 0) {
-      setSelectedConversation(conversations[0].id);
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !selectedConv || !user) return;
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: selectedConv,
+      message: replyText.trim(),
+      sender_type: 'chatter',
+      sender_id: user.id,
+    });
+    if (error) {
+      toast.error('Failed to send message');
+      return;
     }
-  }, [conversations, selectedConversation]);
-
-  const activeChatter = chatters.find(c => c.id === activeChatterId);
-  const myConversations = conversations.filter(c => c.chatterId === activeChatterId);
-  const selectedConv = conversations.find(c => c.id === selectedConversation);
-
-  const handleSendReply = () => {
-    if (!replyText.trim() || !selectedConversation) return;
-    addChatterReply(selectedConversation, replyText.trim());
+    setMessages(prev => [...prev, {
+      id: crypto.randomUUID(),
+      message: replyText.trim(),
+      sender_type: 'chatter',
+      created_at: new Date().toISOString(),
+    }]);
     setReplyText('');
   };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
+  };
+
+  const activeConv = conversations.find(c => c.id === selectedConv);
 
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-80 bg-card border-r border-border flex flex-col shrink-0 hidden md:flex">
         <div className="p-5 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5 text-primary" />
               <span className="font-display font-bold text-foreground">Chatter Panel</span>
@@ -57,181 +154,114 @@ const ChatterDashboard = () => {
               <LogOut className="h-4 w-4" />
             </button>
           </div>
+          <p className="text-xs text-muted-foreground mb-3">{user?.email}</p>
 
-          {/* Chatter selector */}
-          <select
-            value={activeChatterId}
-            onChange={(e) => setActiveChatterId(e.target.value)}
-            className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground mb-3 focus:outline-none focus:ring-2 focus:ring-primary/40"
+          {/* Status toggle */}
+          <Button
+            size="sm"
+            variant="outline"
+            className={`w-full text-xs ${chatterStatus === 'online' ? 'border-primary/30 text-primary' : 'border-border text-muted-foreground'}`}
+            onClick={toggleStatus}
           >
-            {chatters.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.status}) — {c.activeConversationCount} active
-              </option>
-            ))}
-          </select>
-
-          {/* Toggle online status */}
-          {activeChatter && (
-            <Button
-              size="sm"
-              variant="outline"
-              className={`w-full text-xs ${activeChatter.status === 'online' ? 'border-primary/30 text-primary' : 'border-border text-muted-foreground'}`}
-              onClick={() => toggleChatterStatus(activeChatterId!)}
-            >
-              {activeChatter.status === 'online' ? <Wifi className="mr-1 h-3 w-3" /> : <WifiOff className="mr-1 h-3 w-3" />}
-              {activeChatter.status === 'online' ? 'Online' : 'Offline'} — Click to toggle
-            </Button>
-          )}
-
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              placeholder="Search conversations..."
-              className="w-full bg-secondary border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
-          </div>
+            {chatterStatus === 'online' ? <Wifi className="mr-1 h-3 w-3" /> : <WifiOff className="mr-1 h-3 w-3" />}
+            {chatterStatus === 'online' ? 'Online' : 'Offline'} — Click to toggle
+          </Button>
         </div>
-
-        {/* Notifications */}
-        <AnimatePresence>
-          {notifications.map(n => (
-            <motion.div
-              key={n.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="mx-3 mt-2 p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-start gap-2"
-            >
-              <Bell className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-foreground font-medium">{n.message}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Just now</p>
-              </div>
-              <button onClick={() => dismissNotification(n.id)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2 p-4">
           <div className="bg-secondary rounded-xl p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{myConversations.length}</p>
-            <p className="text-xs text-muted-foreground">Active</p>
+            <p className="text-lg font-bold text-foreground">{conversations.length}</p>
+            <p className="text-xs text-muted-foreground">Assigned</p>
           </div>
           <div className="bg-secondary rounded-xl p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{activeChatter?.activeConversationCount || 0}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-lg font-bold text-foreground">{workload}</p>
+            <p className="text-xs text-muted-foreground">Workload</p>
           </div>
         </div>
 
-        {/* Conversations list */}
+        {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {myConversations.length === 0 ? (
+          {conversations.length === 0 ? (
             <div className="p-6 text-center">
               <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No conversations assigned yet</p>
-              <p className="text-xs text-muted-foreground mt-1">New subscribers will appear here</p>
             </div>
           ) : (
-            myConversations.map((conv) => (
+            conversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => setSelectedConversation(conv.id)}
-                className={`w-full flex items-center gap-3 p-4 border-b border-border hover:bg-secondary/50 transition-colors text-left ${
-                  selectedConversation === conv.id ? 'bg-secondary' : ''
+                onClick={() => setSelectedConv(conv.id)}
+                className={`w-full flex flex-col gap-1 p-4 border-b border-border hover:bg-secondary/50 transition-colors text-left ${
+                  selectedConv === conv.id ? 'bg-secondary' : ''
                 }`}
               >
-                <div className="relative">
-                  <img src={conv.modelAvatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-foreground">{conv.userName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {conv.messages.length > 0 ? conv.messages[conv.messages.length - 1].time : 'New'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    as {conv.modelName}: {conv.messages.length > 0 ? conv.messages[conv.messages.length - 1].text : 'New subscriber — say hello!'}
-                  </p>
-                </div>
+                <span className="text-sm font-medium text-foreground">{conv.user_email}</span>
+                <span className="text-xs text-muted-foreground">Model: {conv.model_name}</span>
               </button>
             ))
           )}
+        </div>
+
+        <div className="p-4 border-t border-border">
+          <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+            Toggle Theme
+          </Button>
         </div>
       </aside>
 
       {/* Chat area */}
       <main className="flex-1 flex flex-col">
-        {selectedConv ? (
+        {activeConv ? (
           <>
-            {/* Chat header */}
-            <div className="glass-card border-b px-6 py-4 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <img src={selectedConv.modelAvatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    {selectedConv.userName} → {selectedConv.modelName}
-                  </h3>
-                  <span className="text-xs text-primary">Subscriber • Active</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="border-border text-foreground hover:bg-secondary text-xs">
-                  <Star className="mr-1 h-3 w-3" /> Mark VIP
-                </Button>
-              </div>
+            <div className="glass-card border-b px-6 py-4 shrink-0">
+              <h3 className="text-sm font-semibold text-foreground">{activeConv.user_email}</h3>
+              <span className="text-xs text-muted-foreground">Replying as {activeConv.model_name}</span>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {selectedConv.messages.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              {messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center h-full">
                   <div className="text-center">
                     <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">New subscriber! Send the first message as {selectedConv.modelName}.</p>
+                    <p className="text-muted-foreground text-sm">No messages yet. Send the first one!</p>
                   </div>
                 </div>
               ) : (
-                selectedConv.messages.map((msg, i) => (
+                messages.map((msg) => (
                   <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
+                    key={msg.id}
+                    initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-[70%] ${
-                      msg.sender === 'user'
-                        ? 'bg-secondary text-secondary-foreground rounded-2xl rounded-br-md'
-                        : 'bg-primary/10 border border-primary/20 text-foreground rounded-2xl rounded-bl-md'
-                    } px-4 py-3`}>
-                      <p className="text-sm">{msg.text}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{msg.time}</p>
+                    <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
+                      msg.sender_type === 'user'
+                        ? 'bg-secondary text-secondary-foreground rounded-br-md'
+                        : 'bg-primary/10 border border-primary/20 text-foreground rounded-bl-md'
+                    }`}>
+                      <p className="text-sm">{msg.message}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
                   </motion.div>
                 ))
               )}
             </div>
 
-            {/* Reply */}
             <div className="glass-card border-t px-6 py-4 shrink-0">
-              <p className="text-xs text-muted-foreground mb-2">
-                Replying as <span className="text-primary font-medium">{selectedConv.modelName}</span>
-              </p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
-                  placeholder={`Type reply as ${selectedConv.modelName}...`}
+                  placeholder={`Type reply as ${activeConv.model_name}...`}
                   className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
-                <Button
-                  onClick={handleSendReply}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 px-5"
-                >
+                <Button onClick={handleSendReply} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 px-5">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -242,10 +272,7 @@ const ChatterDashboard = () => {
             <div className="text-center">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {myConversations.length === 0
-                  ? 'No subscribers assigned yet. They will appear when users subscribe.'
-                  : 'Select a conversation to start replying'
-                }
+                {conversations.length === 0 ? 'No users assigned yet.' : 'Select a conversation to start replying'}
               </p>
             </div>
           </div>

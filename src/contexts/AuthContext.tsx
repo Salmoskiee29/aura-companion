@@ -1,19 +1,21 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
+import type { AppRole } from '@/types';
 
 interface AuthUser {
   id: string;
   email: string;
   displayName: string;
   joinedAt: Date;
+  role: AppRole;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -26,12 +28,24 @@ export function useAuth() {
   return ctx;
 }
 
-function mapUser(user: User): AuthUser {
+async function fetchUserRole(userId: string): Promise<AppRole> {
+  const { data } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .limit(1)
+    .single();
+  return (data?.role as AppRole) || 'user';
+}
+
+async function mapUser(user: User): Promise<AuthUser> {
+  const role = await fetchUserRole(user.id);
   return {
     id: user.id,
     email: user.email || '',
     displayName: user.user_metadata?.display_name || user.email?.split('@')[0] || '',
     joinedAt: new Date(user.created_at),
+    role,
   };
 }
 
@@ -40,20 +54,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUser(mapUser(session.user));
+        const authUser = await mapUser(session.user);
+        setUser(authUser);
       } else {
         setUser(null);
       }
       setIsLoading(false);
     });
 
-    // Then check existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        setUser(mapUser(session.user));
+        const authUser = await mapUser(session.user);
+        setUser(authUser);
       }
       setIsLoading(false);
     });
@@ -61,9 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
+    const authUser = await mapUser(data.user);
+    setUser(authUser);
+    return authUser;
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
