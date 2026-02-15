@@ -6,18 +6,24 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+function getRoleRedirect(role: string) {
+  if (role === 'admin') return '/admin-panel';
+  if (role === 'chatter') return '/chatter-panel';
+  return '/dashboard';
+}
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, signup, isAuthenticated } = useAuth();
+  const { isAuthenticated, user, login, signup } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>(searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
+  if (isAuthenticated && user) {
+    navigate(getRoleRedirect(user.role), { replace: true });
     return null;
   }
 
@@ -27,9 +33,9 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === 'login') {
-        await login(email, password);
+        const authUser = await login(email, password);
         toast.success('Welcome back!');
-        navigate('/dashboard');
+        navigate(getRoleRedirect(authUser.role));
       } else {
         await signup(email, password);
         toast.success('Check your email to confirm your account!');

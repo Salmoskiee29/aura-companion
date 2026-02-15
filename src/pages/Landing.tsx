@@ -1,11 +1,22 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Shield, Sparkles } from 'lucide-react';
+import { Heart, MessageCircle, Shield, Sparkles, Sun, Moon, Globe } from 'lucide-react';
 import heroBg from '@/assets/hero-bg.jpg';
 import { mockModels } from '@/data/models';
-import { ModelCard } from '@/components/models/ModelCard';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Landing = () => {
+  const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, languageNames, availableLanguages } = useLanguage();
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       {/* Navigation */}
@@ -15,11 +26,41 @@ const Landing = () => {
             <Heart className="h-6 w-6 text-primary" />
             <span className="text-xl font-display font-bold text-foreground">Lumière</span>
           </Link>
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</Link>
             <Link to="/auth?mode=login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Log in</Link>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Language Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-foreground">
+                  <Globe className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {availableLanguages.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang}
+                    onClick={() => setLanguage(lang)}
+                    className={language === lang ? 'bg-primary/10 text-primary' : ''}
+                  >
+                    {languageNames[lang]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              onClick={toggleTheme}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
             <Link to="/auth?mode=signup">
               <button className="px-5 py-2 rounded-full btn-premium text-primary-foreground text-sm font-semibold">
                 Get Started
@@ -31,13 +72,11 @@ const Landing = () => {
 
       {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center">
-        {/* Background with overlays */}
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-b from-background via-background/50 to-background" />
         </div>
 
-        {/* Ambient particles */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[...Array(6)].map((_, i) => (
             <div
@@ -81,7 +120,6 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* Model preview cards */}
           <motion.div
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
@@ -115,18 +153,11 @@ const Landing = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/3 blur-[150px] rounded-full" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">
               Why Choose <span className="text-gradient-primary">Lumière</span>
             </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              Premium AI companions designed for genuine connection.
-            </p>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">Premium AI companions designed for genuine connection.</p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {[
@@ -153,13 +184,11 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Preview */}
+      {/* Pricing */}
       <section className="py-28 relative">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">
-            Simple Pricing
-          </h2>
-          <p className="text-muted-foreground text-lg mb-14 max-w-xl mx-auto">Start free, upgrade when you&apos;re ready.</p>
+          <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">Simple Pricing</h2>
+          <p className="text-muted-foreground text-lg mb-14 max-w-xl mx-auto">Start free, upgrade when you're ready.</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
               { name: 'Free Trial', price: '$0', period: '', features: ['5 free messages', '1 companion', 'Basic chat'], highlight: false },
@@ -188,13 +217,9 @@ const Landing = () => {
                 </ul>
                 <Link to="/auth?mode=signup">
                   {plan.highlight ? (
-                    <button className="w-full py-3 rounded-full btn-premium text-primary-foreground font-semibold">
-                      Get Premium
-                    </button>
+                    <button className="w-full py-3 rounded-full btn-premium text-primary-foreground font-semibold">Get Premium</button>
                   ) : (
-                    <button className="w-full py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-muted transition-colors">
-                      Get Started
-                    </button>
+                    <button className="w-full py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-muted transition-colors">Get Started</button>
                   )}
                 </Link>
               </motion.div>

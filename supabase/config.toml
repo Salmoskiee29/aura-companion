@@ -2,3 +2,9 @@ project_id = "dwsbrqzovadkbnmbdkkm"
 
 [functions.chat]
 verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.assign-chatter]
+verify_jwt = false

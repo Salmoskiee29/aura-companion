@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { useRoleAuth } from '@/contexts/RoleAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import type { AppRole } from '@/types';
 
 interface Props {
@@ -8,14 +8,23 @@ interface Props {
 }
 
 export function RoleProtectedRoute({ children, requiredRole }: Props) {
-  const { isChatterAuthenticated, isAdminAuthenticated } = useRoleAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
-  if (requiredRole === 'chatter' && !isChatterAuthenticated) {
-    return <Navigate to="/chatter-login" replace />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
-  if (requiredRole === 'admin' && !isAdminAuthenticated) {
-    return <Navigate to="/admin-login" replace />;
+  if (!isAuthenticated) return <Navigate to="/auth?mode=login" replace />;
+
+  if (user?.role !== requiredRole) {
+    // Redirect to their correct dashboard
+    if (user?.role === 'admin') return <Navigate to="/admin-panel" replace />;
+    if (user?.role === 'chatter') return <Navigate to="/chatter-panel" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

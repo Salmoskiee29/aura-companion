@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      chatters: {
+        Row: {
+          active_conversations: number
+          created_at: string
+          id: string
+          max_capacity: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_conversations?: number
+          created_at?: string
+          id?: string
+          max_capacity?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_conversations?: number
+          created_at?: string
+          id?: string
+          max_capacity?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companion_models: {
         Row: {
           age: number
@@ -236,6 +266,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      waiting_queue: {
+        Row: {
+          created_at: string
+          id: string
+          model_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          model_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          model_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiting_queue_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "companion_models"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
