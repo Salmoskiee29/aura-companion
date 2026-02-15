@@ -29,23 +29,31 @@ export function useAuth() {
 }
 
 async function fetchUserRole(userId: string): Promise<AppRole> {
-  const { data } = await supabase
-    .from('user_roles')
-    .select('role')
-    .eq('user_id', userId)
-    .limit(1)
-    .single();
-  return (data?.role as AppRole) || 'user';
+  try {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+    if (error) {
+      console.error('fetchUserRole error:', error);
+      return 'user';
+    }
+    return (data?.role as AppRole) || 'user';
+  } catch (e) {
+    console.error('fetchUserRole exception:', e);
+    return 'user';
+  }
 }
 
-async function mapUser(user: User): Promise<AuthUser> {
-  const role = await fetchUserRole(user.id);
+function buildBasicUser(user: User): AuthUser {
   return {
     id: user.id,
     email: user.email || '',
     displayName: user.user_metadata?.display_name || user.email?.split('@')[0] || '',
     joinedAt: new Date(user.created_at),
-    role,
+    role: 'user', // Default, will be updated
   };
 }
 
@@ -53,32 +61,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch role separately to avoid blocking auth state changes
+  const loadUserWithRole = useCallback(async (supaUser: User) => {
+    const basic = buildBasicUser(supaUser);
+    setUser(basic); // Set immediately so isAuthenticated becomes true
+    // Then fetch role asynchronously
+    const role = await fetchUserRole(supaUser.id);
+    setUser(prev => prev && prev.id === supaUser.id ? { ...prev, role } : prev);
+    return { ...basic, role };
+  }, []);
+
   useEffect(() => {
+    // First get current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await loadUserWithRole(session.user);
+      }
+      setIsLoading(false);
+    });
+
+    // Then listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const authUser = await mapUser(session.user);
-        setUser(authUser);
+        // Use setTimeout to avoid blocking the auth state change callback
+        setTimeout(() => {
+          loadUserWithRole(session.user);
+        }, 0);
       } else {
         setUser(null);
       }
       setIsLoading(false);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const authUser = await mapUser(session.user);
-        setUser(authUser);
-      }
-      setIsLoading(false);
-    });
-
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadUserWithRole]);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
-    const authUser = await mapUser(data.user);
+    const basic = buildBasicUser(data.user);
+    setUser(basic);
+    // Fetch role after login
+    const role = await fetchUserRole(data.user.id);
+    const authUser = { ...basic, role };
     setUser(authUser);
     return authUser;
   }, []);
