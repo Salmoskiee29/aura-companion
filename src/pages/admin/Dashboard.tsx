@@ -8,6 +8,7 @@ import {
   Heart, Sun, Moon, Shield, RefreshCw,
   BarChart3, Settings as SettingsIcon, FileText, Menu, X,
 } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -148,8 +149,8 @@ const AdminDashboard = () => {
         <div className="p-5 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Heart className="h-6 w-6 text-admin-primary" />
-              <span className="font-display font-bold text-foreground">Lumière</span>
+              <img src={logoImg} alt="YourMatch" className="h-6 w-6 rounded" />
+              <span className="font-display font-bold text-foreground">YourMatch</span>
             </div>
             <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-muted-foreground hover:text-foreground">
               <X className="h-5 w-5" />

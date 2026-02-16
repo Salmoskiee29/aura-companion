@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Shield, Sparkles, Sun, Moon, Globe, UserPlus, Search, MessageSquare, ChevronDown } from 'lucide-react';
 import heroBg from '@/assets/hero-bg.jpg';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { mockModels } from '@/data/models';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,8 +25,8 @@ const Landing = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/30">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-primary" />
-            <span className="text-xl font-display font-bold text-foreground">Lumière</span>
+            <img src={logoImg} alt="YourMatch" className="h-6 w-6 rounded" />
+            <span className="text-xl font-display font-bold text-foreground">YourMatch</span>
           </Link>
           <div className="hidden md:flex items-center gap-6">
             <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{t('nav.about')}</Link>
@@ -125,7 +126,7 @@ const Landing = () => {
         <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">
-              {t('features.title')} <span className="text-gradient-primary">Lumière</span>
+              {t('features.title')} <span className="text-gradient-primary">YourMatch</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-xl mx-auto">{t('features.desc')}</p>
           </motion.div>
@@ -219,8 +220,8 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground">Lumière</span>
+              <img src={logoImg} alt="YourMatch" className="h-5 w-5 rounded" />
+              <span className="font-display font-bold text-foreground">YourMatch</span>
             </div>
             <p className="text-sm text-muted-foreground">{t('footer.rights')}</p>
             <DropdownMenu>

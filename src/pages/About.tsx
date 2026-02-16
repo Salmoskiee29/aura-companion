@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Mail, MapPin, Phone, Globe, Shield, Users, MessageCircle, ArrowRight } from 'lucide-react';
+import { Mail, MapPin, Globe, Shield, Users, MessageCircle, ArrowRight } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 
 const teamMembers = [
-  { name: 'Alex Rivera', role: 'CEO & Founder', desc: "Visionary behind Lumière's mission to redefine digital companionship." },
+  { name: 'Alex Rivera', role: 'CEO & Founder', desc: "Visionary behind YourMatch's mission to redefine digital companionship." },
   { name: 'Priya Sharma', role: 'CTO', desc: 'Leading our AI engineering and infrastructure at scale.' },
   { name: 'Marcus Chen', role: 'Head of Product', desc: 'Crafting seamless experiences that feel genuinely human.' },
 ];
@@ -22,8 +23,8 @@ const About = () => {
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-primary" />
-            <span className="font-display font-bold text-foreground text-lg">Lumière</span>
+            <img src={logoImg} alt="YourMatch" className="h-6 w-6 rounded" />
+            <span className="font-display font-bold text-foreground text-lg">YourMatch</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/models" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Models</Link>
@@ -43,7 +44,7 @@ const About = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-5xl font-display font-bold text-foreground mb-6"
           >
-            About Lumière
+            About YourMatch
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -67,7 +68,7 @@ const About = () => {
           >
             <h2 className="text-2xl font-display font-bold text-foreground mb-4">Our Mission</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Lumière was born from a simple belief: everyone deserves connection. In a world that can feel isolating, 
+              YourMatch was born from a simple belief: everyone deserves connection. In a world that can feel isolating, 
               we create AI companions that offer warmth, understanding, and genuine conversation — available whenever you need them.
             </p>
             <p className="text-muted-foreground leading-relaxed">
@@ -147,8 +148,8 @@ const About = () => {
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground mb-1">Email</h4>
-                  <p className="text-sm text-muted-foreground">support@lumiere.ai</p>
-                  <p className="text-sm text-muted-foreground">business@lumiere.ai</p>
+                  <p className="text-sm text-muted-foreground">support@yourmatch.ai</p>
+                  <p className="text-sm text-muted-foreground">business@yourmatch.ai</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -167,7 +168,7 @@ const About = () => {
                 </div>
                 <div>
                   <h4 className="font-medium text-foreground mb-1">Social</h4>
-                  <p className="text-sm text-muted-foreground">@lumiere on Twitter, Instagram & TikTok</p>
+                  <p className="text-sm text-muted-foreground">@yourmatch on Twitter, Instagram & TikTok</p>
                 </div>
               </div>
             </motion.div>
@@ -210,10 +211,10 @@ const About = () => {
       <footer className="border-t border-border py-8 px-4">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary" />
-            <span className="font-display font-bold text-foreground">Lumière</span>
+            <img src={logoImg} alt="YourMatch" className="h-5 w-5 rounded" />
+            <span className="font-display font-bold text-foreground">YourMatch</span>
           </div>
-          <p className="text-xs text-muted-foreground">© 2026 Lumière. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">© 2026 YourMatch. All rights reserved.</p>
         </div>
       </footer>
     </div>
