@@ -1,5 +1,6 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Heart, Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -43,8 +44,8 @@ export function DashboardLayout() {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-5 border-b border-border shrink-0">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <Heart className="h-6 w-6 text-primary" />
-            <span className="text-lg font-display font-bold text-foreground">Lumière</span>
+            <img src={logoImg} alt="YourMatch" className="h-6 w-6 rounded" />
+            <span className="text-lg font-display font-bold text-foreground">YourMatch</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />

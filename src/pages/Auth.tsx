@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -64,8 +65,8 @@ const Auth = () => {
             <span className="text-sm">Back</span>
           </Link>
           <Link to="/" className="flex items-center gap-2">
-            <Heart className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-display font-bold text-foreground">Lumière</span>
+            <img src={logoImg} alt="YourMatch" className="h-8 w-8 rounded" />
+            <span className="text-2xl font-display font-bold text-foreground">YourMatch</span>
           </Link>
           <div className="w-14" />
         </div>

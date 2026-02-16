@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  MessageSquare, Users, LogOut, Heart,
+  MessageSquare, Users, LogOut,
   Send, Wifi, WifiOff, Sun, Moon, Menu, X,
 } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -152,8 +153,8 @@ const ChatterDashboard = () => {
         <div className="p-5 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-chatter-primary" />
-              <span className="font-display font-bold text-foreground">Lumière</span>
+              <img src={logoImg} alt="YourMatch" className="h-5 w-5 rounded" />
+              <span className="font-display font-bold text-foreground">YourMatch</span>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-muted-foreground hover:text-foreground">

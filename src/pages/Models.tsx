@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { mockModels } from '@/data/models';
 import { ModelCard } from '@/components/models/ModelCard';
@@ -18,8 +19,8 @@ const Models = () => {
               </Button>
             </Link>
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground">Lumière</span>
+              <img src={logoImg} alt="YourMatch" className="h-5 w-5 rounded" />
+              <span className="font-display font-bold text-foreground">YourMatch</span>
             </div>
           </div>
           <Link to="/auth?mode=signup">
