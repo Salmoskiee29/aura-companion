@@ -1,7 +1,7 @@
 import { CompanionModel } from '@/types';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle, Instagram } from 'lucide-react';
 
 interface ModelCardProps {
   model: CompanionModel;
@@ -46,12 +46,23 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
           <div className="p-4 space-y-3">
             <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{model.personality}</p>
             <div className="flex items-center justify-between">
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 items-center">
                 {model.traits.slice(0, 2).map((trait) => (
                   <span key={trait} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     {trait}
                   </span>
                 ))}
+                {model.instagramLink && (
+                  <a
+                    href={model.instagramLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="p-1 rounded-full hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Instagram className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:scale-110">
                 <MessageCircle className="h-4 w-4 text-primary" />

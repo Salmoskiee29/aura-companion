@@ -14,6 +14,7 @@ export interface CompanionModel {
   messageLength: 'short' | 'medium' | 'long';
   avatar: string;
   online: boolean;
+  instagramLink?: string;
 }
 
 export interface Message {

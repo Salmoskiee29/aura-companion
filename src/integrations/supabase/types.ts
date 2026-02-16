@@ -53,6 +53,7 @@ export type Database = {
           emoji_usage: string
           hobbies: string[]
           id: string
+          instagram_link: string
           languages: string[]
           message_length: string
           name: string
@@ -61,6 +62,7 @@ export type Database = {
           online: boolean
           personality: string
           relationship_style: string
+          status: string
           system_prompt: string
           traits: string[]
           updated_at: string
@@ -73,6 +75,7 @@ export type Database = {
           emoji_usage?: string
           hobbies?: string[]
           id?: string
+          instagram_link?: string
           languages?: string[]
           message_length?: string
           name: string
@@ -81,6 +84,7 @@ export type Database = {
           online?: boolean
           personality?: string
           relationship_style?: string
+          status?: string
           system_prompt?: string
           traits?: string[]
           updated_at?: string
@@ -93,6 +97,7 @@ export type Database = {
           emoji_usage?: string
           hobbies?: string[]
           id?: string
+          instagram_link?: string
           languages?: string[]
           message_length?: string
           name?: string
@@ -101,6 +106,7 @@ export type Database = {
           online?: boolean
           personality?: string
           relationship_style?: string
+          status?: string
           system_prompt?: string
           traits?: string[]
           updated_at?: string
