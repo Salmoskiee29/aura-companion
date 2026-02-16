@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
+import { ModelManagement } from '@/components/admin/ModelManagement';
 
 type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'chatters' | 'subscriptions' | 'reports' | 'settings';
 
@@ -373,19 +374,24 @@ const AdminDashboard = () => {
             </motion.div>
           )}
 
-          {/* Models / Conversations / Reports / Settings placeholders */}
-          {(activeTab === 'models' || activeTab === 'conversations' || activeTab === 'reports' || activeTab === 'settings') && (
+          {/* Models Tab */}
+          {activeTab === 'models' && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <ModelManagement />
+            </motion.div>
+          )}
+
+          {/* Conversations / Reports / Settings placeholders */}
+          {(activeTab === 'conversations' || activeTab === 'reports' || activeTab === 'settings') && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="bg-card border border-border rounded-2xl p-12 text-center">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {activeTab === 'models' && 'Model Management'}
                   {activeTab === 'conversations' && 'Conversation Monitor'}
                   {activeTab === 'reports' && 'Reports'}
                   {activeTab === 'settings' && 'Platform Settings'}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {activeTab === 'models' && 'Manage AI companion models from here.'}
                   {activeTab === 'conversations' && 'View all live conversations.'}
                   {activeTab === 'reports' && 'View platform reports and exports.'}
                   {activeTab === 'settings' && 'Configure platform settings.'}

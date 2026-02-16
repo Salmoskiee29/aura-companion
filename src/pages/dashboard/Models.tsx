@@ -1,8 +1,46 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { mockModels } from '@/data/models';
 import { ModelCard } from '@/components/models/ModelCard';
+import { supabase } from '@/integrations/supabase/client';
+import { CompanionModel } from '@/types';
 
 export default function DashboardModels() {
+  const [models, setModels] = useState<CompanionModel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      const { data } = await supabase
+        .from('companion_models')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        setModels(data.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          age: m.age,
+          nationality: m.nationality,
+          languages: m.languages,
+          personality: m.personality,
+          occupation: m.occupation,
+          hobbies: m.hobbies,
+          relationshipStyle: m.relationship_style,
+          traits: m.traits,
+          conversationSpeed: m.conversation_speed as any,
+          emojiUsage: m.emoji_usage as any,
+          messageLength: m.message_length as any,
+          avatar: m.avatar,
+          online: m.online,
+          instagramLink: m.instagram_link,
+        })));
+      }
+      setLoading(false);
+    };
+    fetchModels();
+  }, []);
+
   return (
     <div className="p-6 md:p-8">
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
@@ -12,11 +50,19 @@ export default function DashboardModels() {
         <p className="text-muted-foreground">Choose someone who matches your vibe.</p>
       </motion.div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl">
-        {mockModels.map((model, i) => (
-          <ModelCard key={model.id} model={model} index={i} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : models.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">No companions available yet.</div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl">
+          {models.map((model, i) => (
+            <ModelCard key={model.id} model={model} index={i} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
