@@ -79,16 +79,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       // Skip if login() is handling this — it will set user itself
       if (isLoggingIn.current) return;
 
+      // IMPORTANT: Do NOT await async work inside onAuthStateChange callback.
+      // The Supabase client holds an internal lock during this callback,
+      // so any supabase query here would deadlock.
       if (session?.user) {
-        await loadUserWithRole(session.user);
+        setTimeout(() => {
+          loadUserWithRole(session.user).then(() => setIsLoading(false));
+        }, 0);
       } else {
         setUser(null);
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
