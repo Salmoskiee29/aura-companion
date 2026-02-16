@@ -53,6 +53,14 @@ export default {
         },
         "surface-elevated": "hsl(var(--surface-elevated))",
         online: "hsl(var(--online))",
+        "chatter-primary": {
+          DEFAULT: "hsl(var(--chatter-primary))",
+          foreground: "hsl(var(--chatter-primary-foreground))",
+        },
+        "admin-primary": {
+          DEFAULT: "hsl(var(--admin-primary))",
+          foreground: "hsl(var(--admin-primary-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

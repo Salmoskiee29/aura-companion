@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MessageSquare, Users, LogOut, Heart,
-  Send, Wifi, WifiOff, Sun, Moon,
+  Send, Wifi, WifiOff, Sun, Moon, Menu, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +37,7 @@ const ChatterDashboard = () => {
   const [replyText, setReplyText] = useState('');
   const [chatterStatus, setChatterStatus] = useState<'online' | 'offline'>('offline');
   const [workload, setWorkload] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Fetch chatter's status
   useEffect(() => {
@@ -65,7 +66,6 @@ const ChatterDashboard = () => {
         .eq('assigned_chatter_id', user.id);
       
       if (data && data.length > 0) {
-        // Get user emails and model names
         const userIds = [...new Set(data.map(c => c.user_id))];
         const modelIds = [...new Set(data.map(c => c.model_id))];
         
@@ -142,17 +142,27 @@ const ChatterDashboard = () => {
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Mobile overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-80 bg-card border-r border-border flex flex-col shrink-0 hidden md:flex">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-80 bg-card border-r border-border flex flex-col transition-transform duration-300 md:translate-x-0 md:static md:z-auto ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5 text-primary" />
-              <span className="font-display font-bold text-foreground">Chatter Panel</span>
+              <Heart className="h-5 w-5 text-chatter-primary" />
+              <span className="font-display font-bold text-foreground">Lumière</span>
             </div>
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-foreground transition-colors">
-              <LogOut className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+              <button onClick={handleLogout} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mb-3">{user?.email}</p>
 
@@ -160,7 +170,7 @@ const ChatterDashboard = () => {
           <Button
             size="sm"
             variant="outline"
-            className={`w-full text-xs ${chatterStatus === 'online' ? 'border-primary/30 text-primary' : 'border-border text-muted-foreground'}`}
+            className={`w-full text-xs ${chatterStatus === 'online' ? 'border-chatter-primary/30 text-chatter-primary' : 'border-border text-muted-foreground'}`}
             onClick={toggleStatus}
           >
             {chatterStatus === 'online' ? <Wifi className="mr-1 h-3 w-3" /> : <WifiOff className="mr-1 h-3 w-3" />}
@@ -171,11 +181,11 @@ const ChatterDashboard = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2 p-4">
           <div className="bg-secondary rounded-xl p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{conversations.length}</p>
+            <p className="text-lg font-bold text-chatter-primary">{conversations.length}</p>
             <p className="text-xs text-muted-foreground">Assigned</p>
           </div>
           <div className="bg-secondary rounded-xl p-3 text-center">
-            <p className="text-lg font-bold text-foreground">{workload}</p>
+            <p className="text-lg font-bold text-chatter-primary">{workload}</p>
             <p className="text-xs text-muted-foreground">Workload</p>
           </div>
         </div>
@@ -191,9 +201,9 @@ const ChatterDashboard = () => {
             conversations.map((conv) => (
               <button
                 key={conv.id}
-                onClick={() => setSelectedConv(conv.id)}
+                onClick={() => { setSelectedConv(conv.id); setMobileSidebarOpen(false); }}
                 className={`w-full flex flex-col gap-1 p-4 border-b border-border hover:bg-secondary/50 transition-colors text-left ${
-                  selectedConv === conv.id ? 'bg-secondary' : ''
+                  selectedConv === conv.id ? 'bg-chatter-primary/5 border-l-2 border-l-chatter-primary' : ''
                 }`}
               >
                 <span className="text-sm font-medium text-foreground">{conv.user_email}</span>
@@ -203,23 +213,38 @@ const ChatterDashboard = () => {
           )}
         </div>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-3 border-t border-border space-y-1">
           <Button variant="ghost" size="sm" className="w-full justify-start text-muted-foreground" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
             {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
             Toggle Theme
           </Button>
+          <button onClick={handleLogout} className="md:hidden w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+            <LogOut className="h-4 w-4" />
+            Log Out
+          </button>
         </div>
       </aside>
 
       {/* Chat area */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="h-14 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-muted-foreground hover:text-foreground">
+              <Menu className="h-5 w-5" />
+            </button>
+            <span className="text-xs font-bold tracking-widest text-chatter-primary uppercase">Chatter Panel</span>
+          </div>
+          {activeConv && (
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground">{activeConv.user_email}</p>
+              <p className="text-xs text-muted-foreground">as {activeConv.model_name}</p>
+            </div>
+          )}
+        </header>
+
         {activeConv ? (
           <>
-            <div className="glass-card border-b px-6 py-4 shrink-0">
-              <h3 className="text-sm font-semibold text-foreground">{activeConv.user_email}</h3>
-              <span className="text-xs text-muted-foreground">Replying as {activeConv.model_name}</span>
-            </div>
-
             <div className="flex-1 overflow-y-auto p-6 space-y-3">
               {messages.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center h-full">
@@ -239,7 +264,7 @@ const ChatterDashboard = () => {
                     <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
                       msg.sender_type === 'user'
                         ? 'bg-secondary text-secondary-foreground rounded-br-md'
-                        : 'bg-primary/10 border border-primary/20 text-foreground rounded-bl-md'
+                        : 'bg-chatter-primary/10 border border-chatter-primary/20 text-foreground rounded-bl-md'
                     }`}>
                       <p className="text-sm">{msg.message}</p>
                       <p className="text-[10px] text-muted-foreground mt-1">
@@ -251,7 +276,7 @@ const ChatterDashboard = () => {
               )}
             </div>
 
-            <div className="glass-card border-t px-6 py-4 shrink-0">
+            <div className="border-t border-border px-6 py-4 shrink-0 bg-card">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -259,9 +284,9 @@ const ChatterDashboard = () => {
                   onChange={(e) => setReplyText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
                   placeholder={`Type reply as ${activeConv.model_name}...`}
-                  className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-chatter-primary/40"
                 />
-                <Button onClick={handleSendReply} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 px-5">
+                <Button onClick={handleSendReply} className="bg-chatter-primary hover:bg-chatter-primary/90 text-chatter-primary-foreground rounded-xl h-12 px-5">
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
