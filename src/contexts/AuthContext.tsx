@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
 import type { AppRole } from '@/types';
@@ -47,32 +47,31 @@ async function fetchUserRole(userId: string): Promise<AppRole> {
   }
 }
 
-function buildBasicUser(user: User): AuthUser {
+function buildAuthUser(user: User, role: AppRole): AuthUser {
   return {
     id: user.id,
     email: user.email || '',
     displayName: user.user_metadata?.display_name || user.email?.split('@')[0] || '',
     joinedAt: new Date(user.created_at),
-    role: 'user', // Default, will be updated
+    role,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Flag to prevent onAuthStateChange from overwriting login result
+  const isLoggingIn = useRef(false);
 
-  // Fetch role separately to avoid blocking auth state changes
+  // Load user WITH role resolved before setting state
   const loadUserWithRole = useCallback(async (supaUser: User) => {
-    const basic = buildBasicUser(supaUser);
-    setUser(basic); // Set immediately so isAuthenticated becomes true
-    // Then fetch role asynchronously
     const role = await fetchUserRole(supaUser.id);
-    setUser(prev => prev && prev.id === supaUser.id ? { ...prev, role } : prev);
-    return { ...basic, role };
+    const authUser = buildAuthUser(supaUser, role);
+    setUser(authUser);
+    return authUser;
   }, []);
 
   useEffect(() => {
-    // First get current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         await loadUserWithRole(session.user);
@@ -80,13 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    // Then listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Skip if login() is handling this — it will set user itself
+      if (isLoggingIn.current) return;
+
       if (session?.user) {
-        // Use setTimeout to avoid blocking the auth state change callback
-        setTimeout(() => {
-          loadUserWithRole(session.user);
-        }, 0);
+        await loadUserWithRole(session.user);
       } else {
         setUser(null);
       }
@@ -97,15 +95,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUserWithRole]);
 
   const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
-    const basic = buildBasicUser(data.user);
-    setUser(basic);
-    // Fetch role after login
-    const role = await fetchUserRole(data.user.id);
-    const authUser = { ...basic, role };
-    setUser(authUser);
-    return authUser;
+    isLoggingIn.current = true;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw new Error(error.message);
+      // Fetch role BEFORE setting user — prevents premature redirect
+      const role = await fetchUserRole(data.user.id);
+      const authUser = buildAuthUser(data.user, role);
+      setUser(authUser);
+      return authUser;
+    } finally {
+      isLoggingIn.current = false;
+    }
   }, []);
 
   const signup = useCallback(async (email: string, password: string) => {
