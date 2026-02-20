@@ -44,7 +44,7 @@ serve(async (req) => {
       });
     }
 
-    // Check subscription or gem balance
+    // Check subscription or diamond balance
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("*")
@@ -52,7 +52,7 @@ serve(async (req) => {
       .single();
 
     if (sub && sub.status !== "active") {
-      // Check gem balance
+      // Check diamond balance
       const serviceClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -64,7 +64,7 @@ serve(async (req) => {
         .single();
 
       if (!wallet || wallet.balance <= 0) {
-        return new Response(JSON.stringify({ error: "No gems remaining. Please subscribe or purchase gems." }), {
+        return new Response(JSON.stringify({ error: "No diamonds remaining. Please subscribe or purchase diamonds." }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -126,7 +126,7 @@ serve(async (req) => {
       });
     }
 
-    // Deduct gem if on free plan
+    // Deduct diamond if on free plan
     if (sub && sub.status !== "active") {
       const serviceClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -150,7 +150,7 @@ serve(async (req) => {
         user_id: userId,
         amount: -1,
         type: "spent",
-        description: "AI chat message",
+        description: "AI chat message (diamond spent)",
       });
     }
 
