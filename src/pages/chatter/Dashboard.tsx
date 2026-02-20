@@ -6,6 +6,7 @@ import {
   Send, Wifi, WifiOff, Sun, Moon, Menu, X,
 } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
+import { UserNotesPanel } from '@/components/chatter/UserNotesPanel';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -227,7 +228,7 @@ const ChatterDashboard = () => {
       </aside>
 
       {/* Chat area */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 lg:flex-row">
         {/* Top bar */}
         <header className="h-14 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
@@ -245,54 +246,62 @@ const ChatterDashboard = () => {
         </header>
 
         {activeConv ? (
-          <>
-            <div className="flex-1 overflow-y-auto p-6 space-y-3">
-              {messages.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground text-sm">No messages yet. Send the first one!</p>
-                  </div>
-                </div>
-              ) : (
-                messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                      msg.sender_type === 'user'
-                        ? 'bg-secondary text-secondary-foreground rounded-br-md'
-                        : 'bg-chatter-primary/10 border border-chatter-primary/20 text-foreground rounded-bl-md'
-                    }`}>
-                      <p className="text-sm">{msg.message}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+          <div className="flex-1 flex flex-col lg:flex-row min-w-0">
+            {/* Chat messages */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                {messages.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">No messages yet. Send the first one!</p>
                     </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
+                        msg.sender_type === 'user'
+                          ? 'bg-secondary text-secondary-foreground rounded-br-md'
+                          : 'bg-chatter-primary/10 border border-chatter-primary/20 text-foreground rounded-bl-md'
+                      }`}>
+                        <p className="text-sm">{msg.message}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
 
-            <div className="border-t border-border px-6 py-4 shrink-0 bg-card">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
-                  placeholder={`Type reply as ${activeConv.model_name}...`}
-                  className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-chatter-primary/40"
-                />
-                <Button onClick={handleSendReply} className="bg-chatter-primary hover:bg-chatter-primary/90 text-chatter-primary-foreground rounded-xl h-12 px-5">
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="border-t border-border px-6 py-4 shrink-0 bg-card">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
+                    placeholder={`Type reply as ${activeConv.model_name}...`}
+                    className="flex-1 bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-chatter-primary/40"
+                  />
+                  <Button onClick={handleSendReply} className="bg-chatter-primary hover:bg-chatter-primary/90 text-chatter-primary-foreground rounded-xl h-12 px-5">
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </>
+
+            {/* Notes panel */}
+            <aside className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto p-4 shrink-0">
+              <UserNotesPanel userId={activeConv.user_id} />
+            </aside>
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">

@@ -14,6 +14,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import About from "./pages/About";
 import Chat from "./pages/Chat";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 // Dashboard pages
@@ -43,6 +44,7 @@ const App = () => (
                 {/* Public routes */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 <Route path="/about" element={<About />} />
 
                 {/* Protected user dashboard */}
@@ -61,7 +63,7 @@ const App = () => (
 
                 {/* Role-protected dashboards */}
                 <Route path="/chatter-panel" element={<RoleProtectedRoute requiredRole="chatter"><ChatterPanel /></RoleProtectedRoute>} />
-                <Route path="/admin-panel" element={<RoleProtectedRoute requiredRole="admin"><AdminPanel /></RoleProtectedRoute>} />
+                <Route path="/admin-panel" element={<RoleProtectedRoute requiredRole={["admin", "developer"]}><AdminPanel /></RoleProtectedRoute>} />
 
                 {/* Redirect old routes */}
                 <Route path="/models" element={<Navigate to="/dashboard/models" replace />} />

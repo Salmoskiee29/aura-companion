@@ -9,6 +9,7 @@ interface AuthUser {
   displayName: string;
   joinedAt: Date;
   role: AppRole;
+  onboardingCompleted: boolean;
 }
 
 interface AuthContextType {
@@ -47,13 +48,27 @@ async function fetchUserRole(userId: string): Promise<AppRole> {
   }
 }
 
-function buildAuthUser(user: User, role: AppRole): AuthUser {
+async function fetchOnboardingStatus(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('user_id', userId)
+      .single();
+    return data?.onboarding_completed ?? false;
+  } catch {
+    return false;
+  }
+}
+
+function buildAuthUser(user: User, role: AppRole, onboardingCompleted: boolean): AuthUser {
   return {
     id: user.id,
     email: user.email || '',
     displayName: user.user_metadata?.display_name || user.email?.split('@')[0] || '',
     joinedAt: new Date(user.created_at),
     role,
+    onboardingCompleted,
   };
 }
 
@@ -65,8 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user WITH role resolved before setting state
   const loadUserWithRole = useCallback(async (supaUser: User) => {
-    const role = await fetchUserRole(supaUser.id);
-    const authUser = buildAuthUser(supaUser, role);
+    const [role, onboardingCompleted] = await Promise.all([
+      fetchUserRole(supaUser.id),
+      fetchOnboardingStatus(supaUser.id),
+    ]);
+    const authUser = buildAuthUser(supaUser, role, onboardingCompleted);
     setUser(authUser);
     return authUser;
   }, []);
@@ -104,9 +122,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw new Error(error.message);
-      // Fetch role BEFORE setting user — prevents premature redirect
-      const role = await fetchUserRole(data.user.id);
-      const authUser = buildAuthUser(data.user, role);
+      const [role, onboardingCompleted] = await Promise.all([
+        fetchUserRole(data.user.id),
+        fetchOnboardingStatus(data.user.id),
+      ]);
+      const authUser = buildAuthUser(data.user, role, onboardingCompleted);
       setUser(authUser);
       return authUser;
     } finally {

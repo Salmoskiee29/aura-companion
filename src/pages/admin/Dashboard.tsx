@@ -61,7 +61,8 @@ const AdminDashboard = () => {
   // Create account form
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'chatter' | 'admin'>('chatter');
+  const [newRole, setNewRole] = useState<'user' | 'chatter' | 'admin'>('chatter');
+  const isDeveloper = user?.role === 'developer';
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -233,9 +234,10 @@ const AdminDashboard = () => {
               <div className="grid sm:grid-cols-4 gap-3">
                 <input type="email" placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40" />
                 <input type="password" placeholder="Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40" />
-                <select value={newRole} onChange={e => setNewRole(e.target.value as 'chatter' | 'admin')} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40">
+                <select value={newRole} onChange={e => setNewRole(e.target.value as 'user' | 'chatter' | 'admin')} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40">
+                  <option value="user">User</option>
                   <option value="chatter">Chatter</option>
-                  <option value="admin">Admin</option>
+                  {isDeveloper && <option value="admin">Admin</option>}
                 </select>
                 <Button onClick={handleCreateAccount} disabled={creating} className="bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground">
                   {creating ? 'Creating...' : 'Create'}

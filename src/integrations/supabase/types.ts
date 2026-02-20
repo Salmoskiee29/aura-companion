@@ -241,6 +241,9 @@ export type Database = {
           display_name: string
           email: string
           id: string
+          interests: string[] | null
+          nickname: string | null
+          onboarding_completed: boolean
           updated_at: string
           user_id: string
         }
@@ -250,6 +253,9 @@ export type Database = {
           display_name?: string
           email: string
           id?: string
+          interests?: string[] | null
+          nickname?: string | null
+          onboarding_completed?: boolean
           updated_at?: string
           user_id: string
         }
@@ -259,6 +265,9 @@ export type Database = {
           display_name?: string
           email?: string
           id?: string
+          interests?: string[] | null
+          nickname?: string | null
+          onboarding_completed?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -310,6 +319,45 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notes: {
+        Row: {
+          author_id: string
+          created_at: string
+          highlights: string | null
+          id: string
+          notes: string | null
+          personality_summary: string | null
+          preferred_content_type: string | null
+          spending_level: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          highlights?: string | null
+          id?: string
+          notes?: string | null
+          personality_summary?: string | null
+          preferred_content_type?: string | null
+          spending_level?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          highlights?: string | null
+          id?: string
+          notes?: string | null
+          personality_summary?: string | null
+          preferred_content_type?: string | null
+          spending_level?: string | null
           updated_at?: string
           user_id?: string
         }
