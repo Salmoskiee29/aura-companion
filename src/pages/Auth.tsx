@@ -6,14 +6,26 @@ import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+async function getLastChatRoute(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('conversations')
+    .select('model_id')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  return data ? `/chat/${data.model_id}` : null;
+}
 
 function getRoleRedirect(role: string, onboardingCompleted: boolean) {
   if (role === 'developer') return '/admin-panel';
   if (role === 'admin') return '/admin-panel';
   if (role === 'chatter') return '/chatter-panel';
   if (!onboardingCompleted) return '/onboarding';
-  return '/dashboard';
+  return null; // will resolve async
 }
 
 const Auth = () => {
@@ -25,14 +37,31 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(getRoleRedirect(user.role, user.onboardingCompleted), { replace: true });
+      const staticRedirect = getRoleRedirect(user.role, user.onboardingCompleted);
+      if (staticRedirect) {
+        navigate(staticRedirect, { replace: true });
+      } else {
+        // For users: try to resume last chat
+        getLastChatRoute(user.id).then(route => {
+          navigate(route || '/dashboard', { replace: true });
+        });
+      }
     }
   }, [isAuthenticated, user, navigate]);
+
+  const resolveAndNavigate = async (authUser: { id: string; role: string; onboardingCompleted: boolean }) => {
+    const staticRedirect = getRoleRedirect(authUser.role, authUser.onboardingCompleted);
+    if (staticRedirect) {
+      navigate(staticRedirect);
+      return;
+    }
+    const lastChat = await getLastChatRoute(authUser.id);
+    navigate(lastChat || '/dashboard');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,12 +71,12 @@ const Auth = () => {
       if (mode === 'login') {
         const authUser = await login(email, password);
         toast.success('Welcome back!');
-        navigate(getRoleRedirect(authUser.role, authUser.onboardingCompleted));
+        await resolveAndNavigate(authUser);
       } else {
         await signup(email, password);
         toast.success('Account created! Redirecting...');
         const authUser = await login(email, password);
-        navigate(getRoleRedirect(authUser.role, authUser.onboardingCompleted));
+        await resolveAndNavigate(authUser);
       }
     } catch (err: any) {
       toast.error(err?.message || 'Something went wrong.');

@@ -1,14 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, X, Sparkles, Crown } from 'lucide-react';
+import { Heart, X, Sparkles, Crown, Diamond } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PaywallModalProps {
   open: boolean;
   onClose: () => void;
   modelName: string;
+  diamondBalance?: number;
 }
 
-export const PaywallModal = ({ open, onClose, modelName }: PaywallModalProps) => {
+export const PaywallModal = ({ open, onClose, modelName, diamondBalance = 0 }: PaywallModalProps) => {
   return (
     <AnimatePresence>
       {open && (
@@ -55,10 +56,16 @@ export const PaywallModal = ({ open, onClose, modelName }: PaywallModalProps) =>
                 <h3 className="text-2xl font-display font-bold text-foreground mb-2">
                   She wants to keep talking... ❤️
                 </h3>
-                <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+                <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
                   {modelName} is waiting for your reply.<br />
                   Unlock unlimited access to continue this connection.
                 </p>
+                {diamondBalance <= 0 && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 text-destructive text-sm font-medium mb-4">
+                    <Diamond className="h-4 w-4" />
+                    0 diamonds remaining
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <Link to="/dashboard/billing">

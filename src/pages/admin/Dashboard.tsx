@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
 import { ModelManagement } from '@/components/admin/ModelManagement';
+import { AdminDashboardTab } from '@/components/admin/AdminDashboardTab';
 
 type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'chatters' | 'subscriptions' | 'reports' | 'settings';
 
@@ -249,24 +250,12 @@ const AdminDashboard = () => {
 
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                {[
-                  { label: 'Total Users', value: userCount, icon: Users, color: 'text-admin-primary' },
-                  { label: 'Active Chatters', value: chatterCount, icon: Shield, color: 'text-admin-primary' },
-                  { label: 'Online Chatters', value: chattersList.filter(c => c.status === 'online').length, icon: Activity, color: 'text-online' },
-                  { label: 'Total Conversations', value: '—', icon: MessageCircle, color: 'text-admin-primary' },
-                ].map((stat) => (
-                  <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
-                    <div className="w-10 h-10 rounded-xl bg-admin-primary/10 flex items-center justify-center mb-3">
-                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                    </div>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
+            <AdminDashboardTab
+              userCount={userCount}
+              chatterCount={chatterCount}
+              onlineChatters={chattersList.filter(c => c.status === 'online').length}
+              overloadedChatters={chattersList.filter(c => c.active_conversations >= c.max_capacity)}
+            />
           )}
 
           {/* Analytics Tab */}

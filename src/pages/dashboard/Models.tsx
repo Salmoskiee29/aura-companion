@@ -3,6 +3,20 @@ import { motion } from 'framer-motion';
 import { ModelCard } from '@/components/models/ModelCard';
 import { supabase } from '@/integrations/supabase/client';
 import { CompanionModel } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function ModelSkeleton() {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-border bg-card">
+      <Skeleton className="aspect-[3/4] w-full" />
+      <div className="p-4 space-y-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardModels() {
   const [models, setModels] = useState<CompanionModel[]>([]);
@@ -51,8 +65,10 @@ export default function DashboardModels() {
       </motion.div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 max-w-6xl">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ModelSkeleton key={i} />
+          ))}
         </div>
       ) : models.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">No companions available yet.</div>
