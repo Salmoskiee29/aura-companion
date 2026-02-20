@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, Zap, Diamond, Gem, ShieldCheck, Loader2 } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Diamond, ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { TIERS, GEM_BUNDLES, type TierKey } from '@/data/stripe-tiers';
+import { TIERS, DIAMOND_BUNDLES, type TierKey } from '@/data/stripe-tiers';
 import { useSearchParams } from 'react-router-dom';
 
 const tierIcons: Record<TierKey, typeof Sparkles> = {
@@ -16,10 +16,10 @@ const tierIcons: Record<TierKey, typeof Sparkles> = {
 };
 
 const tierFeatures: Record<TierKey, string[]> = {
-  free: ['10 gems to start', 'AI chat only', 'No human priority', 'No image requests'],
-  basic: ['Unlimited AI chat', '15 human replies/day', 'Standard priority', 'Access official models', 'Purchase gem bundles'],
-  premium: ['Unlimited AI chat', '50 human replies/day', 'Faster priority', 'Extended memory', '50 daily gem bonus', 'Discounted media'],
-  vip: ['Unlimited AI chat', 'Highest priority', 'Dedicated chatter', '150 daily gem bonus', 'Media discounts', 'Exclusive content', 'VIP badge ✨'],
+  free: ['10 diamonds to start', 'AI chat only', 'No human priority', 'No image requests'],
+  basic: ['Unlimited AI chat', '15 human replies/day', 'Standard priority', 'Access official models', 'Purchase diamond bundles'],
+  premium: ['Unlimited AI chat', '50 human replies/day', 'Faster priority', 'Extended memory', '50 daily diamond bonus', 'Discounted media'],
+  vip: ['Unlimited AI chat', 'Highest priority', 'Dedicated chatter', '150 daily diamond bonus', 'Media discounts', 'Exclusive content', 'VIP badge ✨'],
 };
 
 const Billing = () => {
@@ -142,8 +142,8 @@ const Billing = () => {
             {TIERS[currentTier].name} Plan
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border text-foreground text-sm font-medium">
-            <Diamond className="h-4 w-4 text-primary" />
-            {gemBalance} Gems
+         <Diamond className="h-4 w-4 text-primary" />
+            {gemBalance} Diamonds
           </div>
           {subscriptionEnd && (
             <span className="text-xs text-muted-foreground">
@@ -226,18 +226,18 @@ const Billing = () => {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="text-center mb-8">
           <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-            <Gem className="inline h-6 w-6 text-primary mr-2" />
-            Gem Store
+            <Diamond className="inline h-6 w-6 text-primary mr-2" />
+            Diamond Store
           </h2>
           <p className="text-muted-foreground text-sm">
-            Use gems for AI images, voice messages, premium content, and more.
+            Use diamonds for AI images, voice messages, premium content, and more.
           </p>
         </div>
 
         <div className="grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
-          {GEM_BUNDLES.map((bundle, i) => (
+          {DIAMOND_BUNDLES.map((bundle, i) => (
             <motion.div
-              key={bundle.gems}
+              key={bundle.diamonds}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 + i * 0.08 }}
@@ -246,8 +246,8 @@ const Billing = () => {
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <Diamond className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold text-foreground">{bundle.gems}</h3>
-              <p className="text-sm text-muted-foreground mb-4">Gems</p>
+              <h3 className="text-2xl font-bold text-foreground">{bundle.diamonds}</h3>
+              <p className="text-sm text-muted-foreground mb-4">Diamonds</p>
               <Button
                 className="w-full btn-premium text-primary-foreground"
                 onClick={() => handleBuyGems(bundle.price_id)}

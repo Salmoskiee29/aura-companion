@@ -13,10 +13,10 @@ const PRODUCT_TO_TIER: Record<string, string> = {
   "prod_Tz5ELzQabf9Ta1": "vip",
 };
 
-const TIER_LIMITS: Record<string, { daily_human_replies: number; daily_gems: number }> = {
-  basic: { daily_human_replies: 15, daily_gems: 0 },
-  premium: { daily_human_replies: 50, daily_gems: 50 },
-  vip: { daily_human_replies: 999, daily_gems: 150 },
+const TIER_LIMITS: Record<string, { daily_human_replies: number; daily_diamonds: number }> = {
+  basic: { daily_human_replies: 15, daily_diamonds: 0 },
+  premium: { daily_human_replies: 50, daily_diamonds: 50 },
+  vip: { daily_human_replies: 999, daily_diamonds: 150 },
 };
 
 serve(async (req) => {
@@ -62,7 +62,7 @@ serve(async (req) => {
       const productId = sub.items.data[0].price.product as string;
       tier = PRODUCT_TO_TIER[productId] || "basic";
 
-      const limits = TIER_LIMITS[tier] || { daily_human_replies: 0, daily_gems: 0 };
+      const limits = TIER_LIMITS[tier] || { daily_human_replies: 0, daily_diamonds: 0 };
 
       // Update subscription record
       await supabaseClient

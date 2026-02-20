@@ -24,11 +24,11 @@ const Chat = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<{ status: string; tier: string } | null>(null);
-  const [gemBalance, setGemBalance] = useState<number>(10);
+  const [diamondBalance, setDiamondBalance] = useState<number>(10);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isSubscribed = subscription?.status === 'active';
-  const isLocked = !isSubscribed && gemBalance <= 0;
+  const isLocked = !isSubscribed && diamondBalance <= 0;
 
   // Load model, subscription, and conversation
   useEffect(() => {
@@ -43,9 +43,9 @@ const Chat = () => {
       const { data: sub } = await supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single();
       if (sub) setSubscription(sub);
 
-      // Fetch gem balance
+      // Fetch diamond balance
       const { data: wallet } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
-      if (wallet) setGemBalance(wallet.balance);
+      if (wallet) setDiamondBalance(wallet.balance);
 
       // Find or create conversation
       const { data: existing } = await supabase
@@ -235,9 +235,9 @@ const Chat = () => {
           message: assistantText,
           sender_type: 'model',
         });
-        // Deduct gem if on free plan
+        // Deduct diamond if on free plan
         if (subscription && subscription.status !== 'active') {
-          setGemBalance(prev => Math.max(0, prev - 1));
+          setDiamondBalance(prev => Math.max(0, prev - 1));
         }
       }
     } catch (err: any) {
@@ -276,7 +276,7 @@ const Chat = () => {
         </div>
         {!isSubscribed && (
           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">
-            💎 {gemBalance} gems
+            💎 {diamondBalance} diamonds
           </span>
         )}
         {isSubscribed && (
