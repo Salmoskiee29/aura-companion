@@ -5,15 +5,52 @@ import { ArrowLeft, Send, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ChatMessage {
   id: string;
   sender: 'user' | 'model';
   text: string;
   time: string;
+  pending?: boolean;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+
+function ChatSkeleton() {
+  return (
+    <div className="h-screen flex flex-col bg-background">
+      {/* Header skeleton */}
+      <div className="border-b border-border/50 px-4 py-3 flex items-center gap-3 shrink-0">
+        <Skeleton className="h-5 w-5 rounded" />
+        <Skeleton className="w-11 h-11 rounded-full" />
+        <div className="flex-1 space-y-1.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
+      {/* Messages skeleton */}
+      <div className="flex-1 px-4 py-6 space-y-4">
+        <div className="flex justify-start">
+          <Skeleton className="h-16 w-64 rounded-2xl" />
+        </div>
+        <div className="flex justify-end">
+          <Skeleton className="h-12 w-48 rounded-2xl" />
+        </div>
+        <div className="flex justify-start">
+          <Skeleton className="h-20 w-72 rounded-2xl" />
+        </div>
+      </div>
+      {/* Input skeleton */}
+      <div className="border-t border-border/50 px-4 py-3 shrink-0">
+        <div className="flex gap-2 max-w-3xl mx-auto">
+          <Skeleton className="flex-1 h-12 rounded-2xl" />
+          <Skeleton className="h-12 w-12 rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const Chat = () => {
   const { modelId } = useParams();
@@ -25,6 +62,7 @@ const Chat = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<{ status: string; tier: string } | null>(null);
   const [diamondBalance, setDiamondBalance] = useState<number>(10);
+  const [initialLoading, setInitialLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const isSubscribed = subscription?.status === 'active';
@@ -35,17 +73,16 @@ const Chat = () => {
     if (!modelId || !user) return;
 
     const init = async () => {
-      // Fetch model
-      const { data: m } = await supabase.from('companion_models').select('id, name, avatar, online').eq('id', modelId).single();
-      if (m) setModel(m);
+      // Fetch model, subscription, and diamond balance in parallel
+      const [modelRes, subRes, walletRes] = await Promise.all([
+        supabase.from('companion_models').select('id, name, avatar, online').eq('id', modelId).single(),
+        supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single(),
+        supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single(),
+      ]);
 
-      // Fetch subscription
-      const { data: sub } = await supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single();
-      if (sub) setSubscription(sub);
-
-      // Fetch diamond balance
-      const { data: wallet } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
-      if (wallet) setDiamondBalance(wallet.balance);
+      if (modelRes.data) setModel(modelRes.data);
+      if (subRes.data) setSubscription(subRes.data);
+      if (walletRes.data) setDiamondBalance(walletRes.data.balance);
 
       // Find or create conversation
       const { data: existing } = await supabase
@@ -84,16 +121,16 @@ const Chat = () => {
             text: msg.message,
             time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           })));
-        } else if (m) {
-          // Welcome message
+        } else if (modelRes.data) {
           setMessages([{
             id: '0',
             sender: 'model',
-            text: `Hey there! 💕 I'm ${m.name}. So glad you're here. What's on your mind today?`,
+            text: `Hey there! 💕 I'm ${modelRes.data.name}. So glad you're here. What's on your mind today?`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           }]);
         }
       }
+      setInitialLoading(false);
     };
     init();
   }, [modelId, user]);
@@ -129,24 +166,31 @@ const Chat = () => {
   const sendMessage = async () => {
     if (!input.trim() || !conversationId || !user || isLocked) return;
 
+    const messageText = input.trim();
+    const optimisticId = crypto.randomUUID();
+
+    // Optimistic UI: add message immediately
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: optimisticId,
       sender: 'user',
-      text: input.trim(),
+      text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      pending: true,
     };
 
     setMessages(prev => [...prev, userMsg]);
-    const messageText = input.trim();
     setInput('');
     setIsTyping(true);
 
-    // Save user message to DB
-    await supabase.from('messages').insert({
+    // Save user message to DB (fire and forget for speed)
+    supabase.from('messages').insert({
       conversation_id: conversationId,
       message: messageText,
       sender_type: 'user',
       sender_id: user.id,
+    }).then(() => {
+      // Mark as sent
+      setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, pending: false } : m));
     });
 
     // Call AI chat edge function with streaming
@@ -235,7 +279,6 @@ const Chat = () => {
           message: assistantText,
           sender_type: 'model',
         });
-        // Deduct diamond if on free plan
         if (subscription && subscription.status !== 'active') {
           setDiamondBalance(prev => Math.max(0, prev - 1));
         }
@@ -247,10 +290,14 @@ const Chat = () => {
     }
   };
 
+  if (initialLoading) {
+    return <ChatSkeleton />;
+  }
+
   if (!model) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground">Model not found</p>
       </div>
     );
   }
@@ -293,7 +340,7 @@ const Chat = () => {
             <motion.div
               key={msg.id}
               initial={{ opacity: 0, y: 12, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ opacity: msg.pending ? 0.6 : 1, y: 0, scale: 1 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
@@ -304,7 +351,7 @@ const Chat = () => {
               } px-4 py-3`}>
                 <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 <p className={`text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
-                  {msg.time}
+                  {msg.pending ? 'Sending...' : msg.time}
                 </p>
               </div>
             </motion.div>

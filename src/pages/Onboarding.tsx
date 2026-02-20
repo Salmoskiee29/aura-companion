@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Sparkles, Camera, Heart, MessageCircle, User } from 'lucide-react';
@@ -30,6 +30,30 @@ export default function Onboarding() {
     );
   };
 
+  // Auto-save after each step transition (debounced)
+  const autoSave = useCallback(async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          nickname: nickname || user.displayName,
+          interests,
+        })
+        .eq('user_id', user.id);
+    } catch {
+      // Silent auto-save — errors handled at finish
+    }
+  }, [user, nickname, interests]);
+
+  // Auto-save when step changes (except step 0 and final)
+  useEffect(() => {
+    if (step > 0 && step < 4) {
+      const timeout = setTimeout(autoSave, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [step, autoSave]);
+
   const handleFinish = async () => {
     if (!user) return;
     setSaving(true);
@@ -43,7 +67,7 @@ export default function Onboarding() {
         })
         .eq('user_id', user.id);
       toast.success("You're all set! Let's go 🎉");
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard/models', { replace: true });
     } catch {
       toast.error('Failed to save. Please try again.');
     } finally {

@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import {
   MessageSquare, Users, LogOut,
   Send, Wifi, WifiOff, Sun, Moon, Menu, X,
+  Crown, Diamond,
 } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
 import { UserNotesPanel } from '@/components/chatter/UserNotesPanel';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +22,8 @@ interface ConversationItem {
   user_email: string;
   model_name: string;
   created_at: string;
+  subscription_tier?: string;
+  diamond_balance?: number;
 }
 
 interface MessageItem {
@@ -40,6 +44,8 @@ const ChatterDashboard = () => {
   const [chatterStatus, setChatterStatus] = useState<'online' | 'offline'>('offline');
   const [workload, setWorkload] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [loadingConvs, setLoadingConvs] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // Fetch chatter's status
   useEffect(() => {
@@ -58,10 +64,11 @@ const ChatterDashboard = () => {
     fetchStatus();
   }, [user]);
 
-  // Fetch assigned conversations
+  // Fetch assigned conversations with user context
   useEffect(() => {
     if (!user) return;
     const fetchConvs = async () => {
+      setLoadingConvs(true);
       const { data } = await supabase
         .from('conversations')
         .select('id, user_id, model_id, created_at')
@@ -71,20 +78,30 @@ const ChatterDashboard = () => {
         const userIds = [...new Set(data.map(c => c.user_id))];
         const modelIds = [...new Set(data.map(c => c.model_id))];
         
-        const { data: profiles } = await supabase.from('profiles').select('user_id, email').in('user_id', userIds);
-        const { data: models } = await supabase.from('companion_models').select('id, name').in('id', modelIds);
+        // Fetch profiles, models, subscriptions, wallets in parallel
+        const [profilesRes, modelsRes, subsRes, walletsRes] = await Promise.all([
+          supabase.from('profiles').select('user_id, email').in('user_id', userIds),
+          supabase.from('companion_models').select('id, name').in('id', modelIds),
+          supabase.from('subscriptions').select('user_id, tier').in('user_id', userIds),
+          supabase.from('gem_wallets').select('user_id, balance').in('user_id', userIds),
+        ]);
         
-        const emailMap = new Map(profiles?.map(p => [p.user_id, p.email]) || []);
-        const modelMap = new Map(models?.map(m => [m.id, m.name]) || []);
+        const emailMap = new Map(profilesRes.data?.map(p => [p.user_id, p.email]) || []);
+        const modelMap = new Map(modelsRes.data?.map(m => [m.id, m.name]) || []);
+        const subMap = new Map(subsRes.data?.map(s => [s.user_id, s.tier]) || []);
+        const walletMap = new Map(walletsRes.data?.map(w => [w.user_id, w.balance]) || []);
 
         setConversations(data.map(c => ({
           ...c,
           user_email: emailMap.get(c.user_id) || 'Unknown',
           model_name: modelMap.get(c.model_id) || 'Unknown',
+          subscription_tier: subMap.get(c.user_id) || 'free',
+          diamond_balance: walletMap.get(c.user_id) ?? 0,
         })));
       } else {
         setConversations([]);
       }
+      setLoadingConvs(false);
     };
     fetchConvs();
   }, [user]);
@@ -92,6 +109,7 @@ const ChatterDashboard = () => {
   // Fetch messages for selected conversation
   useEffect(() => {
     if (!selectedConv) return;
+    setLoadingMessages(true);
     const fetchMessages = async () => {
       const { data } = await supabase
         .from('messages')
@@ -99,8 +117,25 @@ const ChatterDashboard = () => {
         .eq('conversation_id', selectedConv)
         .order('created_at', { ascending: true });
       setMessages(data || []);
+      setLoadingMessages(false);
     };
     fetchMessages();
+  }, [selectedConv]);
+
+  // Realtime messages for selected conversation
+  useEffect(() => {
+    if (!selectedConv) return;
+    const channel = supabase
+      .channel(`chatter-messages-${selectedConv}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedConv}` }, (payload) => {
+        const msg = payload.new as any;
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, { id: msg.id, message: msg.message, sender_type: msg.sender_type, created_at: msg.created_at }];
+        });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [selectedConv]);
 
   const toggleStatus = async () => {
@@ -116,23 +151,26 @@ const ChatterDashboard = () => {
 
   const handleSendReply = async () => {
     if (!replyText.trim() || !selectedConv || !user) return;
+    const text = replyText.trim();
+    const optimisticMsg: MessageItem = {
+      id: crypto.randomUUID(),
+      message: text,
+      sender_type: 'chatter',
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+    setReplyText('');
+
     const { error } = await supabase.from('messages').insert({
       conversation_id: selectedConv,
-      message: replyText.trim(),
+      message: text,
       sender_type: 'chatter',
       sender_id: user.id,
     });
     if (error) {
       toast.error('Failed to send message');
-      return;
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     }
-    setMessages(prev => [...prev, {
-      id: crypto.randomUUID(),
-      message: replyText.trim(),
-      sender_type: 'chatter',
-      created_at: new Date().toISOString(),
-    }]);
-    setReplyText('');
   };
 
   const handleLogout = () => {
@@ -168,7 +206,6 @@ const ChatterDashboard = () => {
           </div>
           <p className="text-xs text-muted-foreground mb-3">{user?.email}</p>
 
-          {/* Status toggle */}
           <Button
             size="sm"
             variant="outline"
@@ -194,7 +231,16 @@ const ChatterDashboard = () => {
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
+          {loadingConvs ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-3 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : conversations.length === 0 ? (
             <div className="p-6 text-center">
               <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">No conversations assigned yet</p>
@@ -209,7 +255,14 @@ const ChatterDashboard = () => {
                 }`}
               >
                 <span className="text-sm font-medium text-foreground">{conv.user_email}</span>
-                <span className="text-xs text-muted-foreground">Model: {conv.model_name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">as {conv.model_name}</span>
+                  {conv.subscription_tier && conv.subscription_tier !== 'free' && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      <Crown className="inline h-2.5 w-2.5 mr-0.5" />{conv.subscription_tier}
+                    </span>
+                  )}
+                </div>
               </button>
             ))
           )}
@@ -238,9 +291,22 @@ const ChatterDashboard = () => {
             <span className="text-xs font-bold tracking-widest text-chatter-primary uppercase">Chatter Panel</span>
           </div>
           {activeConv && (
-            <div className="text-right">
-              <p className="text-sm font-medium text-foreground">{activeConv.user_email}</p>
-              <p className="text-xs text-muted-foreground">as {activeConv.model_name}</p>
+            <div className="flex items-center gap-3">
+              {/* Spending context */}
+              <div className="hidden sm:flex items-center gap-2 text-xs">
+                {activeConv.subscription_tier && activeConv.subscription_tier !== 'free' && (
+                  <span className="px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <Crown className="inline h-3 w-3 mr-1" />{activeConv.subscription_tier}
+                  </span>
+                )}
+                <span className="px-2 py-1 rounded-full bg-secondary text-muted-foreground border border-border">
+                  <Diamond className="inline h-3 w-3 mr-1" />{activeConv.diamond_balance ?? 0}
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">{activeConv.user_email}</p>
+                <p className="text-xs text-muted-foreground">as {activeConv.model_name}</p>
+              </div>
             </div>
           )}
         </header>
@@ -250,7 +316,15 @@ const ChatterDashboard = () => {
             {/* Chat messages */}
             <div className="flex-1 flex flex-col min-w-0">
               <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                {messages.length === 0 ? (
+                {loadingMessages ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                        <Skeleton className={`h-12 rounded-2xl ${i % 2 === 0 ? 'w-48' : 'w-64'}`} />
+                      </div>
+                    ))}
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center h-full">
                     <div className="text-center">
                       <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -307,7 +381,7 @@ const ChatterDashboard = () => {
             <div className="text-center">
               <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {conversations.length === 0 ? 'No users assigned yet.' : 'Select a conversation to start replying'}
+                {loadingConvs ? 'Loading...' : conversations.length === 0 ? 'No users assigned yet.' : 'Select a conversation to start replying'}
               </p>
             </div>
           </div>
