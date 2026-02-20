@@ -4,7 +4,7 @@ import type { AppRole } from '@/types';
 
 interface Props {
   children: React.ReactNode;
-  requiredRole: AppRole;
+  requiredRole: AppRole | AppRole[];
 }
 
 export function RoleProtectedRoute({ children, requiredRole }: Props) {
@@ -20,8 +20,9 @@ export function RoleProtectedRoute({ children, requiredRole }: Props) {
 
   if (!isAuthenticated) return <Navigate to="/auth?mode=login" replace />;
 
-  if (user?.role !== requiredRole) {
-    // Redirect to their correct dashboard
+  const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+  if (!user?.role || !allowedRoles.includes(user.role)) {
+    if (user?.role === 'developer') return <Navigate to="/admin-panel" replace />;
     if (user?.role === 'admin') return <Navigate to="/admin-panel" replace />;
     if (user?.role === 'chatter') return <Navigate to="/chatter-panel" replace />;
     return <Navigate to="/dashboard" replace />;

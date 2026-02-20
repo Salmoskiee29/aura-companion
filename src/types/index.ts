@@ -42,4 +42,4 @@ export interface UserProfile {
   subscriptionStatus: 'inactive' | 'active' | 'cancelled';
 }
 
-export type AppRole = 'user' | 'chatter' | 'admin';
+export type AppRole = 'user' | 'chatter' | 'admin' | 'developer';

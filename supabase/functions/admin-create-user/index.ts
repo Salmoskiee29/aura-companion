@@ -26,19 +26,31 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Unauthorized");
 
-    // Check admin role
+    // Check caller's role
     const { data: roleData } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userData.user.id)
-      .eq("role", "admin")
       .single();
 
-    if (!roleData) throw new Error("Only admins can create accounts");
+    const callerRole = roleData?.role;
+    if (callerRole !== "admin" && callerRole !== "developer") {
+      throw new Error("Only admins and developers can create accounts");
+    }
 
     const { email, password, role } = await req.json();
     if (!email || !password || !role) throw new Error("Missing email, password, or role");
-    if (role !== "chatter" && role !== "admin") throw new Error("Invalid role. Must be 'chatter' or 'admin'");
+
+    // Developers can create any role; admins can only create chatter/user
+    if (role === "admin" && callerRole !== "developer") {
+      throw new Error("Only developers can create admin accounts");
+    }
+    if (role === "developer") {
+      throw new Error("Developer accounts cannot be created through this interface");
+    }
+    if (!["user", "chatter", "admin"].includes(role)) {
+      throw new Error("Invalid role. Must be 'user', 'chatter', or 'admin'");
+    }
 
     // Create user via admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
