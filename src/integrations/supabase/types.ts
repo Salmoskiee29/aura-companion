@@ -324,6 +324,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_characters: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          description: string
+          id: string
+          is_public: boolean
+          name: string
+          personality_prompt: string
+          tone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_public?: boolean
+          name: string
+          personality_prompt?: string
+          tone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          is_public?: boolean
+          name?: string
+          personality_prompt?: string
+          tone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_notes: {
         Row: {
           author_id: string

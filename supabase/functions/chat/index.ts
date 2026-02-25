@@ -52,7 +52,6 @@ serve(async (req) => {
       .single();
 
     if (sub && sub.status !== "active") {
-      // Check diamond balance
       const serviceClient = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -71,18 +70,47 @@ serve(async (req) => {
       }
     }
 
-    // Get model system prompt if modelId provided
+    // Determine system prompt based on model type
     let systemPrompt = "You are a friendly, engaging AI companion. Be warm, flirty, and conversational. Keep responses concise (2-3 sentences). Use occasional emojis.";
+    
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     if (modelId) {
-      const { data: model } = await supabase
-        .from("companion_models")
-        .select("system_prompt, name, personality, traits")
-        .eq("id", modelId)
-        .single();
-      if (model?.system_prompt) {
-        systemPrompt = model.system_prompt;
-      } else if (model) {
-        systemPrompt = `You are ${model.name}, an AI companion. Your personality: ${model.personality}. Your traits: ${(model.traits || []).join(", ")}. Be warm, engaging, and stay in character. Keep responses to 2-3 sentences. Use occasional emojis.`;
+      // Check if it's a user character (prefixed with "user-")
+      const isUserCharacter = modelId.startsWith("user-");
+      const actualId = isUserCharacter ? modelId.replace("user-", "") : modelId;
+
+      if (isUserCharacter) {
+        // Load user character's personality prompt
+        const { data: character } = await serviceClient
+          .from("user_characters")
+          .select("name, personality_prompt, description, tone")
+          .eq("id", actualId)
+          .single();
+        
+        if (character) {
+          if (character.personality_prompt) {
+            systemPrompt = character.personality_prompt;
+          } else {
+            systemPrompt = `You are ${character.name}, an AI companion. Description: ${character.description}. Your tone is ${character.tone}. Be warm, engaging, and stay in character. Keep responses to 2-3 sentences. Use occasional emojis.`;
+          }
+        }
+      } else {
+        // Load public model's system prompt
+        const { data: model } = await supabase
+          .from("companion_models")
+          .select("system_prompt, name, personality, traits")
+          .eq("id", actualId)
+          .single();
+        
+        if (model?.system_prompt) {
+          systemPrompt = model.system_prompt;
+        } else if (model) {
+          systemPrompt = `You are ${model.name}, an AI companion. Your personality: ${model.personality}. Your traits: ${(model.traits || []).join(", ")}. Be warm, engaging, and stay in character. Keep responses to 2-3 sentences. Use occasional emojis.`;
+        }
       }
     }
 
@@ -128,10 +156,6 @@ serve(async (req) => {
 
     // Deduct diamond if on free plan
     if (sub && sub.status !== "active") {
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
       const { data: wallet } = await serviceClient
         .from("gem_wallets")
         .select("balance")
@@ -145,7 +169,6 @@ serve(async (req) => {
           .eq("user_id", userId);
       }
 
-      // Record transaction
       await serviceClient.from("gem_transactions").insert({
         user_id: userId,
         amount: -1,

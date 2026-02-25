@@ -1,66 +1,96 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Loader2, ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
-const characterOptions = {
-  hairColor: ['Black', 'Brown', 'Blonde', 'Red', 'Auburn', 'Platinum', 'Silver'],
-  hairstyle: ['Long Straight', 'Long Wavy', 'Short Bob', 'Curly', 'Ponytail', 'Braids', 'Updo'],
-  eyeColor: ['Brown', 'Blue', 'Green', 'Hazel', 'Gray', 'Amber'],
-  ethnicity: ['Caucasian', 'Asian', 'Latina', 'African', 'Middle Eastern', 'Mixed'],
-  ageRange: ['20-25', '25-30', '30-35', '35-40'],
-  bodyType: ['Slim', 'Athletic', 'Curvy', 'Petite', 'Average'],
-  clothing: ['Casual', 'Elegant', 'Business', 'Sporty', 'Bohemian', 'Streetwear'],
-  mood: ['Smiling', 'Serious', 'Playful', 'Confident', 'Mysterious'],
-  background: ['Indoor', 'Outdoor', 'Studio', 'Lifestyle', 'Urban', 'Nature'],
-};
-
-const optionLabels: Record<string, string> = {
-  hairColor: 'Hair Color',
-  hairstyle: 'Hairstyle',
-  eyeColor: 'Eye Color',
-  ethnicity: 'Ethnicity',
-  ageRange: 'Age Range',
-  bodyType: 'Body Type',
-  clothing: 'Clothing Style',
-  mood: 'Mood',
-  background: 'Background',
-};
+const toneOptions = ['Friendly', 'Romantic', 'Playful', 'Mysterious', 'Confident', 'Caring', 'Witty', 'Bold'];
 
 export default function CreateCharacter() {
   const navigate = useNavigate();
-  const [selections, setSelections] = useState<Record<string, string>>({});
+  const { user } = useAuth();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [personalityPrompt, setPersonalityPrompt] = useState('');
+  const [tone, setTone] = useState('Friendly');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const selectOption = (category: string, value: string) => {
-    setSelections(prev => ({ ...prev, [category]: value }));
-  };
-
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
+    if (!description.trim()) {
+      toast.error('Please enter a character description first.');
+      return;
+    }
     setIsGenerating(true);
-    setGeneratedImage(null);
-    setTimeout(() => {
+    setGeneratedImages([]);
+    setSelectedImage(null);
+
+    try {
+      const prompt = `${description}. Personality: ${tone}. ${name ? `Name: ${name}.` : ''}`;
+      
+      // Generate 2 images in parallel
+      const results = await Promise.allSettled([
+        supabase.functions.invoke('generate-image', { body: { prompt } }),
+        supabase.functions.invoke('generate-image', { body: { prompt: prompt + ' Different angle and expression.' } }),
+      ]);
+
+      const images: string[] = [];
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.data?.imageUrl) {
+          images.push(result.value.data.imageUrl);
+        }
+      }
+
+      if (images.length === 0) {
+        toast.error('Image generation failed. Try a different description.');
+      } else {
+        setGeneratedImages(images);
+        setSelectedImage(images[0]);
+        toast.success(`${images.length} image(s) generated!`);
+      }
+    } catch (err: any) {
+      console.error('Generate error:', err);
+      toast.error(err.message || 'Failed to generate images');
+    } finally {
       setIsGenerating(false);
-      setGeneratedImage('/placeholder.svg');
-      toast.info('Connect Lovable Cloud to enable AI image generation.');
-    }, 2000);
+    }
   };
 
-  const handleAccept = () => {
-    // Mock save — stores in localStorage for now
-    const character = {
-      id: crypto.randomUUID(),
-      imageUrl: generatedImage,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-      selections,
-    };
-    localStorage.setItem('lumiere_active_character', JSON.stringify(character));
-    toast.success('Character saved! Redirecting...');
-    setTimeout(() => navigate('/dashboard/my-character'), 800);
+  const handleSave = async () => {
+    if (!user || !name.trim()) {
+      toast.error('Please enter a character name.');
+      return;
+    }
+    if (!personalityPrompt.trim()) {
+      toast.error('Please enter a personality prompt for your character.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('user_characters' as any).insert({
+        user_id: user.id,
+        name: name.trim(),
+        description: description.trim(),
+        personality_prompt: personalityPrompt.trim(),
+        tone,
+        avatar_url: selectedImage || null,
+      });
+
+      if (error) throw error;
+      toast.success('Character saved! 🎉');
+      navigate('/dashboard/my-characters');
+    } catch (err: any) {
+      console.error('Save error:', err);
+      toast.error(err.message || 'Failed to save character');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -69,68 +99,146 @@ export default function CreateCharacter() {
         <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Create Your <span className="text-gradient-primary">Character</span>
         </h1>
-        <p className="text-muted-foreground">Customize and generate a realistic AI companion.</p>
+        <p className="text-muted-foreground">Design a unique AI companion with a custom personality and AI-generated avatar.</p>
       </motion.div>
 
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
-        {Object.entries(characterOptions).map(([key, options]) => (
-          <div key={key}>
-            <label className="text-sm text-muted-foreground mb-2 block">{optionLabels[key]}</label>
+      <div className="space-y-6">
+        {/* Basic Info */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Character Name *</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Luna, Alex, Mika..."
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Character Description *</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your character's appearance, style, and vibe... (e.g. A cheerful 25-year-old with long dark hair, warm brown eyes, casual outfit, friendly smile)"
+              rows={3}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Personality Prompt *</label>
+            <textarea
+              value={personalityPrompt}
+              onChange={(e) => setPersonalityPrompt(e.target.value)}
+              placeholder="How should your character behave in conversations? (e.g. You are Luna, a warm and caring companion who loves deep conversations about life, art, and dreams. You're empathetic, curious, and always supportive.)"
+              rows={4}
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Tone / Style</label>
             <div className="flex flex-wrap gap-2">
-              {options.map(option => (
+              {toneOptions.map(t => (
                 <button
-                  key={option}
-                  onClick={() => selectOption(key, option)}
+                  key={t}
+                  onClick={() => setTone(t)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    selections[key] === option
+                    tone === t
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  {option}
+                  {t}
                 </button>
               ))}
             </div>
           </div>
-        ))}
+        </div>
 
+        {/* Image Generation */}
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-foreground mb-4 font-sans flex items-center gap-2">
+            <ImagePlus className="h-5 w-5 text-primary" />
+            AI Avatar Generation
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Generate an AI portrait based on your character description. You can regenerate until you're happy.
+          </p>
+
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || !description.trim()}
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Generating Images...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-5 w-5" />
+                Generate Character Images
+              </>
+            )}
+          </Button>
+
+          {/* Generated Images Grid */}
+          {generatedImages.length > 0 && (
+            <div className="mt-6">
+              <p className="text-sm text-muted-foreground mb-3">Select your favorite:</p>
+              <div className="grid grid-cols-2 gap-4">
+                {generatedImages.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImage(img)}
+                    className={`relative aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all ${
+                      selectedImage === img ? 'border-primary glow-primary' : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <img src={img} alt={`Generated ${i + 1}`} className="w-full h-full object-cover" />
+                    {selectedImage === img && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                        <Sparkles className="h-3 w-3 text-primary-foreground" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="w-full mt-4 border-border text-foreground"
+              >
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Regenerate
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Save */}
         <Button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base mt-4"
+          onClick={handleSave}
+          disabled={isSaving || !name.trim() || !personalityPrompt.trim()}
+          className="w-full btn-premium text-primary-foreground py-6 text-base"
         >
-          {isGenerating ? (
+          {isSaving ? (
             <>
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="mr-2">
-                <Sparkles className="h-5 w-5" />
-              </motion.div>
-              Generating...
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Saving Character...
             </>
           ) : (
             <>
               <Sparkles className="mr-2 h-5 w-5" />
-              Generate Character
+              Save Character
             </>
           )}
         </Button>
       </div>
-
-      {generatedImage && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 bg-card border border-border rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4 font-sans">Generated Character</h3>
-          <div className="aspect-[3/4] max-w-sm mx-auto rounded-xl overflow-hidden border border-border bg-secondary mb-6">
-            <img src={generatedImage} alt="Generated character" className="w-full h-full object-cover" />
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={handleGenerate} className="flex-1 border-border text-foreground">
-              Regenerate
-            </Button>
-            <Button onClick={handleAccept} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
-              Accept & Save
-            </Button>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }

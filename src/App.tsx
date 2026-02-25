@@ -21,12 +21,11 @@ import NotFound from "./pages/NotFound";
 import DashboardHome from "./pages/dashboard/Home";
 import DashboardModels from "./pages/dashboard/Models";
 import CreateCharacter from "./pages/dashboard/CreateCharacter";
-import MyCharacter from "./pages/dashboard/MyCharacter";
+import MyCharacters from "./pages/dashboard/MyCharacters";
 import DashboardChats from "./pages/dashboard/Chats";
 import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
 import AdminPanel from "./pages/admin/Dashboard";
-import ChatterPanel from "./pages/chatter/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -52,7 +51,7 @@ const App = () => (
                   <Route index element={<DashboardHome />} />
                   <Route path="models" element={<DashboardModels />} />
                   <Route path="create-character" element={<CreateCharacter />} />
-                  <Route path="my-character" element={<MyCharacter />} />
+                  <Route path="my-characters" element={<MyCharacters />} />
                   <Route path="chats" element={<DashboardChats />} />
                   <Route path="billing" element={<Billing />} />
                   <Route path="settings" element={<Settings />} />
@@ -62,17 +61,14 @@ const App = () => (
                 <Route path="/chat/:modelId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
 
                 {/* Role-protected dashboards */}
-                <Route path="/chatter-panel" element={<RoleProtectedRoute requiredRole="chatter"><ChatterPanel /></RoleProtectedRoute>} />
                 <Route path="/admin-panel" element={<RoleProtectedRoute requiredRole={["admin", "developer"]}><AdminPanel /></RoleProtectedRoute>} />
 
                 {/* Redirect old routes */}
                 <Route path="/models" element={<Navigate to="/dashboard/models" replace />} />
                 <Route path="/billing" element={<Navigate to="/dashboard/billing" replace />} />
                 <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
-                <Route path="/chatter" element={<Navigate to="/chatter-panel" replace />} />
+                <Route path="/my-character" element={<Navigate to="/dashboard/my-characters" replace />} />
                 <Route path="/admin" element={<Navigate to="/admin-panel" replace />} />
-                <Route path="/chatter-login" element={<Navigate to="/auth" replace />} />
-                <Route path="/admin-login" element={<Navigate to="/auth" replace />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
