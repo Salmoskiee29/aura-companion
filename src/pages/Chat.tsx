@@ -20,7 +20,6 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 function ChatSkeleton() {
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Header skeleton */}
       <div className="border-b border-border/50 px-4 py-3 flex items-center gap-3 shrink-0">
         <Skeleton className="h-5 w-5 rounded" />
         <Skeleton className="w-11 h-11 rounded-full" />
@@ -29,19 +28,11 @@ function ChatSkeleton() {
           <Skeleton className="h-3 w-16" />
         </div>
       </div>
-      {/* Messages skeleton */}
       <div className="flex-1 px-4 py-6 space-y-4">
-        <div className="flex justify-start">
-          <Skeleton className="h-16 w-64 rounded-2xl" />
-        </div>
-        <div className="flex justify-end">
-          <Skeleton className="h-12 w-48 rounded-2xl" />
-        </div>
-        <div className="flex justify-start">
-          <Skeleton className="h-20 w-72 rounded-2xl" />
-        </div>
+        <div className="flex justify-start"><Skeleton className="h-16 w-64 rounded-2xl" /></div>
+        <div className="flex justify-end"><Skeleton className="h-12 w-48 rounded-2xl" /></div>
+        <div className="flex justify-start"><Skeleton className="h-20 w-72 rounded-2xl" /></div>
       </div>
-      {/* Input skeleton */}
       <div className="border-t border-border/50 px-4 py-3 shrink-0">
         <div className="flex gap-2 max-w-3xl mx-auto">
           <Skeleton className="flex-1 h-12 rounded-2xl" />
@@ -55,7 +46,7 @@ function ChatSkeleton() {
 const Chat = () => {
   const { modelId } = useParams();
   const { user } = useAuth();
-  const [model, setModel] = useState<{ id: string; name: string; avatar: string; online: boolean } | null>(null);
+  const [characterInfo, setCharacterInfo] = useState<{ id: string; name: string; avatar: string; online: boolean; isUserCharacter: boolean } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -68,28 +59,60 @@ const Chat = () => {
   const isSubscribed = subscription?.status === 'active';
   const isLocked = !isSubscribed && diamondBalance <= 0;
 
-  // Load model, subscription, and conversation
+  // Determine if this is a user character (prefixed with "user-") or public model
+  const isUserCharacter = modelId?.startsWith('user-') ?? false;
+  const actualId = isUserCharacter ? modelId!.replace('user-', '') : modelId;
+
   useEffect(() => {
-    if (!modelId || !user) return;
+    if (!actualId || !user) return;
 
     const init = async () => {
-      // Fetch model, subscription, and diamond balance in parallel
-      const [modelRes, subRes, walletRes] = await Promise.all([
-        supabase.from('companion_models').select('id, name, avatar, online').eq('id', modelId).single(),
-        supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single(),
-        supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single(),
-      ]);
+      // Fetch character info, subscription, and wallet in parallel
+      const subPromise = supabase.from('subscriptions').select('status, tier').eq('user_id', user.id).single();
+      const walletPromise = supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
 
-      if (modelRes.data) setModel(modelRes.data);
+      let charInfo: typeof characterInfo = null;
+
+      if (isUserCharacter) {
+        const { data } = await supabase
+          .from('user_characters' as any)
+          .select('id, name, avatar_url, personality_prompt')
+          .eq('id', actualId)
+          .single();
+        if (data) {
+          const d = data as any;
+          charInfo = { id: d.id, name: d.name, avatar: d.avatar_url || '', online: true, isUserCharacter: true };
+        }
+      } else {
+        const { data } = await supabase
+          .from('companion_models')
+          .select('id, name, avatar, online')
+          .eq('id', actualId)
+          .single();
+        if (data) {
+          charInfo = { ...data, isUserCharacter: false };
+        }
+      }
+
+      const [subRes, walletRes] = await Promise.all([subPromise, walletPromise]);
+      if (charInfo) setCharacterInfo(charInfo);
       if (subRes.data) setSubscription(subRes.data);
       if (walletRes.data) setDiamondBalance(walletRes.data.balance);
+
+      if (!charInfo) {
+        setInitialLoading(false);
+        return;
+      }
+
+      // For user characters, we use the actual character ID as model_id in conversations
+      const convModelId = isUserCharacter ? actualId! : actualId!;
 
       // Find or create conversation
       const { data: existing } = await supabase
         .from('conversations')
         .select('id')
         .eq('user_id', user.id)
-        .eq('model_id', modelId)
+        .eq('model_id', convModelId)
         .limit(1)
         .single();
 
@@ -97,12 +120,30 @@ const Chat = () => {
       if (existing) {
         convId = existing.id;
       } else {
-        const { data: newConv } = await supabase
-          .from('conversations')
-          .insert({ user_id: user.id, model_id: modelId })
-          .select('id')
-          .single();
-        convId = newConv?.id || '';
+        // For user characters, we can't use foreign key to companion_models
+        // So we store with the user character ID directly
+        if (isUserCharacter) {
+          // Insert without foreign key constraint - use service function or direct
+          const { data: newConv, error } = await supabase
+            .from('conversations')
+            .insert({ user_id: user.id, model_id: convModelId })
+            .select('id')
+            .single();
+          if (error) {
+            console.error('Create conversation error:', error);
+            // If FK constraint fails, still try to use the chat without persisting conversation
+            convId = '';
+          } else {
+            convId = newConv?.id || '';
+          }
+        } else {
+          const { data: newConv } = await supabase
+            .from('conversations')
+            .insert({ user_id: user.id, model_id: convModelId })
+            .select('id')
+            .single();
+          convId = newConv?.id || '';
+        }
       }
       setConversationId(convId);
 
@@ -121,19 +162,27 @@ const Chat = () => {
             text: msg.message,
             time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           })));
-        } else if (modelRes.data) {
+        } else if (charInfo) {
           setMessages([{
             id: '0',
             sender: 'model',
-            text: `Hey there! 💕 I'm ${modelRes.data.name}. So glad you're here. What's on your mind today?`,
+            text: `Hey there! 💕 I'm ${charInfo.name}. So glad you're here. What's on your mind today?`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           }]);
         }
+      } else if (charInfo) {
+        // No conversation persisted, start fresh
+        setMessages([{
+          id: '0',
+          sender: 'model',
+          text: `Hey there! 💕 I'm ${charInfo.name}. So glad you're here. What's on your mind today?`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }]);
       }
       setInitialLoading(false);
     };
     init();
-  }, [modelId, user]);
+  }, [actualId, user, isUserCharacter]);
 
   // Realtime messages
   useEffect(() => {
@@ -164,12 +213,11 @@ const Chat = () => {
   }, [messages, isTyping]);
 
   const sendMessage = async () => {
-    if (!input.trim() || !conversationId || !user || isLocked) return;
+    if (!input.trim() || !user || isLocked) return;
 
     const messageText = input.trim();
     const optimisticId = crypto.randomUUID();
 
-    // Optimistic UI: add message immediately
     const userMsg: ChatMessage = {
       id: optimisticId,
       sender: 'user',
@@ -182,16 +230,19 @@ const Chat = () => {
     setInput('');
     setIsTyping(true);
 
-    // Save user message to DB (fire and forget for speed)
-    supabase.from('messages').insert({
-      conversation_id: conversationId,
-      message: messageText,
-      sender_type: 'user',
-      sender_id: user.id,
-    }).then(() => {
-      // Mark as sent
+    // Save user message to DB if conversation exists
+    if (conversationId) {
+      supabase.from('messages').insert({
+        conversation_id: conversationId,
+        message: messageText,
+        sender_type: 'user',
+        sender_id: user.id,
+      }).then(() => {
+        setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, pending: false } : m));
+      });
+    } else {
       setMessages(prev => prev.map(m => m.id === optimisticId ? { ...m, pending: false } : m));
-    });
+    }
 
     // Call AI chat edge function with streaming
     try {
@@ -202,13 +253,17 @@ const Chat = () => {
       chatHistory.push({ role: 'user', content: messageText });
 
       const { data: { session } } = await supabase.auth.getSession();
+      
+      // For user characters, pass the character ID; for public models, pass modelId
+      const chatModelId = isUserCharacter ? `user-${actualId}` : actualId;
+      
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: chatHistory, modelId, conversationId }),
+        body: JSON.stringify({ messages: chatHistory, modelId: chatModelId, conversationId }),
       });
 
       if (!resp.ok) {
@@ -273,7 +328,7 @@ const Chat = () => {
       setIsTyping(false);
 
       // Save AI response to DB
-      if (assistantText) {
+      if (assistantText && conversationId) {
         await supabase.from('messages').insert({
           conversation_id: conversationId,
           message: assistantText,
@@ -290,14 +345,12 @@ const Chat = () => {
     }
   };
 
-  if (initialLoading) {
-    return <ChatSkeleton />;
-  }
+  if (initialLoading) return <ChatSkeleton />;
 
-  if (!model) {
+  if (!characterInfo) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Model not found</p>
+        <p className="text-muted-foreground">Character not found</p>
       </div>
     );
   }
@@ -306,20 +359,28 @@ const Chat = () => {
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
       <div className="glass-card border-b border-border/50 px-4 py-3 flex items-center gap-3 shrink-0">
-        <Link to="/dashboard/models">
+        <Link to={characterInfo.isUserCharacter ? "/dashboard/my-characters" : "/dashboard/models"}>
           <button className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-xl hover:bg-secondary">
             <ArrowLeft className="h-5 w-5" />
           </button>
         </Link>
         <div className="relative">
-          <img src={model.avatar} alt={model.name} className="w-11 h-11 rounded-full object-cover border-2 border-primary/30" />
-          {model.online && (
+          {characterInfo.avatar ? (
+            <img src={characterInfo.avatar} alt={characterInfo.name} className="w-11 h-11 rounded-full object-cover border-2 border-primary/30" />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/30">
+              <span className="text-sm font-bold text-primary">{characterInfo.name.charAt(0)}</span>
+            </div>
+          )}
+          {characterInfo.online && (
             <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[hsl(var(--online))] border-2 border-background" />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">{model.name}</h2>
-          <span className="text-xs text-muted-foreground">{model.online ? 'Online now' : 'Away'}</span>
+          <h2 className="text-sm font-semibold text-foreground">{characterInfo.name}</h2>
+          <span className="text-xs text-muted-foreground">
+            {characterInfo.isUserCharacter ? 'Your Character' : characterInfo.online ? 'Online now' : 'Away'}
+          </span>
         </div>
         {!isSubscribed && (
           <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full border border-border">

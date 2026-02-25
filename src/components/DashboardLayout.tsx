@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { to: '/dashboard', icon: Home, label: 'Home', end: true },
   { to: '/dashboard/models', icon: Users, label: 'Models' },
-  { to: '/dashboard/my-character', icon: UserCircle, label: 'My Character' },
+  { to: '/dashboard/my-characters', icon: UserCircle, label: 'My Characters' },
   { to: '/dashboard/create-character', icon: Sparkles, label: 'Create Character' },
   { to: '/dashboard/chats', icon: MessageCircle, label: 'Chats' },
   { to: '/dashboard/billing', icon: CreditCard, label: 'Billing' },

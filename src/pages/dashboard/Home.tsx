@@ -14,9 +14,9 @@ interface RecentChat {
 }
 
 const quickActions = [
-  { to: '/dashboard/models', icon: Users, label: 'Browse Models', desc: 'Find your perfect companion' },
-  { to: '/dashboard/create-character', icon: Sparkles, label: 'Create Character', desc: 'Generate your own AI model' },
-  { to: '/dashboard/my-character', icon: UserCircle, label: 'My Character', desc: 'View your saved character' },
+  { to: '/dashboard/models', icon: Users, label: 'Browse Models', desc: 'Chat with public AI companions' },
+  { to: '/dashboard/create-character', icon: Sparkles, label: 'Create Character', desc: 'Build your own AI companion' },
+  { to: '/dashboard/my-characters', icon: UserCircle, label: 'My Characters', desc: 'View your saved characters' },
   { to: '/dashboard/chats', icon: MessageCircle, label: 'Chats', desc: 'Continue conversations' },
 ];
 
