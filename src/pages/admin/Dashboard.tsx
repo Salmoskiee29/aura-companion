@@ -5,7 +5,7 @@ import {
   Users, MessageSquare, DollarSign, Activity,
   LayoutDashboard, UserCog, Bot, CreditCard,
   MessageCircle, LogOut, Plus, Search,
-  Heart, Sun, Moon, Shield, RefreshCw,
+  Sun, Moon, RefreshCw,
   BarChart3, Settings as SettingsIcon, FileText, Menu, X,
 } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
@@ -14,22 +14,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
 import { ModelManagement } from '@/components/admin/ModelManagement';
-import { AdminDashboardTab } from '@/components/admin/AdminDashboardTab';
 
-type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'chatters' | 'subscriptions' | 'reports' | 'settings';
+type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'subscriptions' | 'settings';
 
 const sidebarItems = [
   { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
   { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
   { id: 'users' as const, label: 'Users', icon: UserCog },
-  { id: 'chatters' as const, label: 'Chatters', icon: Shield },
   { id: 'subscriptions' as const, label: 'Subscriptions', icon: CreditCard },
   { id: 'models' as const, label: 'Models / Content', icon: Bot },
   { id: 'conversations' as const, label: 'Conversations', icon: MessageCircle },
-  { id: 'reports' as const, label: 'Reports', icon: FileText },
   { id: 'settings' as const, label: 'Settings', icon: SettingsIcon },
 ];
 
@@ -40,36 +38,25 @@ interface UserRow {
   role: string;
 }
 
-interface ChatterRow {
-  id: string;
-  user_id: string;
-  status: string;
-  max_capacity: number;
-  active_conversations: number;
-  email?: string;
-}
-
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [users, setUsers] = useState<UserRow[]>([]);
-  const [chattersList, setChattersList] = useState<ChatterRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Create account form
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'user' | 'chatter' | 'admin'>('chatter');
+  const [newRole, setNewRole] = useState<'user' | 'admin'>('user');
   const isDeveloper = user?.role === 'developer';
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Reassignment
-  const [reassignUserId, setReassignUserId] = useState<string | null>(null);
-  const [reassignChatterId, setReassignChatterId] = useState('');
+  // Dashboard stats
+  const [stats, setStats] = useState({ totalUsers: 0, premiumUsers: 0, charactersCreated: 0, chatsToday: 0 });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -84,16 +71,26 @@ const AdminDashboard = () => {
     setLoading(false);
   };
 
-  const fetchChatters = async () => {
-    const { data: chattersData } = await supabase.from('chatters').select('*');
-    const { data: profiles } = await supabase.from('profiles').select('user_id, email');
-    const emailMap = new Map(profiles?.map(p => [p.user_id, p.email]) || []);
-    setChattersList((chattersData || []).map(c => ({ ...c, email: emailMap.get(c.user_id) || '' })));
+  const fetchStats = async () => {
+    const [profilesRes, subsRes, charsRes, convsRes] = await Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      supabase.from('subscriptions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('user_characters').select('id', { count: 'exact', head: true }),
+      supabase.from('conversations').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+    ]);
+    setStats({
+      totalUsers: profilesRes.count ?? 0,
+      premiumUsers: subsRes.count ?? 0,
+      charactersCreated: charsRes.count ?? 0,
+      chatsToday: convsRes.count ?? 0,
+    });
   };
 
   useEffect(() => {
     fetchUsers();
-    fetchChatters();
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -115,30 +112,12 @@ const AdminDashboard = () => {
       setNewPassword('');
       setShowCreateForm(false);
       fetchUsers();
-      if (newRole === 'chatter') fetchChatters();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create account');
     } finally {
       setCreating(false);
     }
   };
-
-  const handleReassign = async (userId: string, chatterId: string) => {
-    try {
-      const { error } = await supabase
-        .from('conversations')
-        .update({ assigned_chatter_id: chatterId })
-        .eq('user_id', userId);
-      if (error) throw error;
-      toast.success('User reassigned successfully');
-      setReassignUserId(null);
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-
-  const userCount = users.filter(u => u.role === 'user').length;
-  const chatterCount = chattersList.length;
 
   return (
     <div className="flex h-screen bg-background">
@@ -191,7 +170,6 @@ const AdminDashboard = () => {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        {/* Top bar */}
         <header className="h-14 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-muted-foreground hover:text-foreground">
@@ -203,22 +181,18 @@ const AdminDashboard = () => {
 
         <div className="p-6 md:p-8 flex-1">
           <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-2xl font-display font-bold text-foreground">
-                {activeTab === 'dashboard' && 'Dashboard'}
-                {activeTab === 'analytics' && 'Analytics Dashboard'}
-                {activeTab === 'models' && 'Model Management'}
-                {activeTab === 'conversations' && 'Conversations'}
-                {activeTab === 'users' && 'User Management'}
-                {activeTab === 'chatters' && 'Chatter Management'}
-                {activeTab === 'subscriptions' && 'Subscriptions'}
-                {activeTab === 'reports' && 'Reports'}
-                {activeTab === 'settings' && 'Settings'}
-              </h1>
-            </div>
-            {(activeTab === 'users' || activeTab === 'chatters') && (
+            <h1 className="text-2xl font-display font-bold text-foreground">
+              {activeTab === 'dashboard' && 'Dashboard'}
+              {activeTab === 'analytics' && 'Analytics Dashboard'}
+              {activeTab === 'models' && 'Model Management'}
+              {activeTab === 'conversations' && 'Conversations'}
+              {activeTab === 'users' && 'User Management'}
+              {activeTab === 'subscriptions' && 'Subscriptions'}
+              {activeTab === 'settings' && 'Settings'}
+            </h1>
+            {activeTab === 'users' && (
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => { fetchUsers(); fetchChatters(); }}>
+                <Button variant="outline" size="sm" onClick={fetchUsers}>
                   <RefreshCw className="mr-1 h-3 w-3" /> Refresh
                 </Button>
                 <Button size="sm" className="bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground" onClick={() => setShowCreateForm(!showCreateForm)}>
@@ -229,33 +203,43 @@ const AdminDashboard = () => {
           </div>
 
           {/* Create Account Form */}
-          {showCreateForm && (activeTab === 'users' || activeTab === 'chatters') && (
+          {showCreateForm && activeTab === 'users' && (
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4 font-sans">Create Staff Account</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4 font-sans">Create Account</h3>
               <div className="grid sm:grid-cols-4 gap-3">
                 <input type="email" placeholder="Email" value={newEmail} onChange={e => setNewEmail(e.target.value)} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40" />
                 <input type="password" placeholder="Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40" />
-                <select value={newRole} onChange={e => setNewRole(e.target.value as 'user' | 'chatter' | 'admin')} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40">
+                <select value={newRole} onChange={e => setNewRole(e.target.value as 'user' | 'admin')} className="bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40">
                   <option value="user">User</option>
-                  <option value="chatter">Chatter</option>
                   {isDeveloper && <option value="admin">Admin</option>}
                 </select>
                 <Button onClick={handleCreateAccount} disabled={creating} className="bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground">
                   {creating ? 'Creating...' : 'Create'}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">New accounts are created server-side. The user will receive a confirmation email.</p>
             </motion.div>
           )}
 
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
-            <AdminDashboardTab
-              userCount={userCount}
-              chatterCount={chatterCount}
-              onlineChatters={chattersList.filter(c => c.status === 'online').length}
-              overloadedChatters={chattersList.filter(c => c.active_conversations >= c.max_capacity)}
-            />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {[
+                  { label: 'Total Users', value: stats.totalUsers, icon: Users, color: 'text-admin-primary' },
+                  { label: 'Premium Users', value: stats.premiumUsers, icon: CreditCard, color: 'text-primary' },
+                  { label: 'Characters Created', value: stats.charactersCreated, icon: Bot, color: 'text-accent' },
+                  { label: 'Chats Today', value: stats.chatsToday, icon: MessageCircle, color: 'text-admin-primary' },
+                ].map((stat) => (
+                  <div key={stat.label} className="bg-card border border-border rounded-2xl p-5">
+                    <div className="w-10 h-10 rounded-xl bg-admin-primary/10 flex items-center justify-center mb-3">
+                      <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           )}
 
           {/* Analytics Tab */}
@@ -275,7 +259,6 @@ const AdminDashboard = () => {
                       <th className="text-left text-xs text-muted-foreground font-medium p-4">Email</th>
                       <th className="text-left text-xs text-muted-foreground font-medium p-4">Name</th>
                       <th className="text-left text-xs text-muted-foreground font-medium p-4">Role</th>
-                      <th className="text-left text-xs text-muted-foreground font-medium p-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -286,67 +269,16 @@ const AdminDashboard = () => {
                         <td className="p-4">
                           <span className={`text-xs px-2 py-1 rounded-full ${
                             u.role === 'admin' ? 'bg-admin-primary/10 text-admin-primary' :
-                            u.role === 'chatter' ? 'bg-chatter-primary/10 text-chatter-primary' :
+                            u.role === 'developer' ? 'bg-accent/10 text-accent' :
                             'bg-primary/10 text-primary'
                           }`}>
                             {u.role}
                           </span>
                         </td>
-                        <td className="p-4">
-                          {u.role === 'user' && (
-                            reassignUserId === u.user_id ? (
-                              <div className="flex gap-2 items-center">
-                                <select value={reassignChatterId} onChange={e => setReassignChatterId(e.target.value)} className="bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-foreground">
-                                  <option value="">Select chatter</option>
-                                  {chattersList.map(c => (
-                                    <option key={c.id} value={c.user_id}>{c.email} ({c.status})</option>
-                                  ))}
-                                </select>
-                                <Button size="sm" variant="outline" className="text-xs" onClick={() => handleReassign(u.user_id, reassignChatterId)}>Assign</Button>
-                                <Button size="sm" variant="ghost" className="text-xs" onClick={() => setReassignUserId(null)}>Cancel</Button>
-                              </div>
-                            ) : (
-                              <Button size="sm" variant="ghost" className="text-xs text-muted-foreground" onClick={() => setReassignUserId(u.user_id)}>Reassign</Button>
-                            )
-                          )}
-                        </td>
                       </tr>
                     ))}
                     {users.length === 0 && (
-                      <tr><td colSpan={4} className="p-8 text-center text-muted-foreground text-sm">No users found</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Chatters Tab */}
-          {activeTab === 'chatters' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left text-xs text-muted-foreground font-medium p-4">Email</th>
-                      <th className="text-left text-xs text-muted-foreground font-medium p-4">Status</th>
-                      <th className="text-left text-xs text-muted-foreground font-medium p-4">Active / Max</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {chattersList.map((c) => (
-                      <tr key={c.id} className="border-b border-border last:border-0">
-                        <td className="p-4 text-sm text-foreground">{c.email}</td>
-                        <td className="p-4">
-                          <span className={`text-xs px-2 py-1 rounded-full ${c.status === 'online' ? 'bg-online/10 text-online' : 'bg-muted text-muted-foreground'}`}>
-                            {c.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-sm text-foreground">{c.active_conversations} / {c.max_capacity}</td>
-                      </tr>
-                    ))}
-                    {chattersList.length === 0 && (
-                      <tr><td colSpan={3} className="p-8 text-center text-muted-foreground text-sm">No chatters yet. Create one above.</td></tr>
+                      <tr><td colSpan={3} className="p-8 text-center text-muted-foreground text-sm">No users found</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -372,19 +304,17 @@ const AdminDashboard = () => {
             </motion.div>
           )}
 
-          {/* Conversations / Reports / Settings placeholders */}
-          {(activeTab === 'conversations' || activeTab === 'reports' || activeTab === 'settings') && (
+          {/* Placeholder tabs */}
+          {(activeTab === 'conversations' || activeTab === 'settings') && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="bg-card border border-border rounded-2xl p-12 text-center">
                 <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   {activeTab === 'conversations' && 'Conversation Monitor'}
-                  {activeTab === 'reports' && 'Reports'}
                   {activeTab === 'settings' && 'Platform Settings'}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {activeTab === 'conversations' && 'View all live conversations.'}
-                  {activeTab === 'reports' && 'View platform reports and exports.'}
+                  {activeTab === 'conversations' && 'View all conversations.'}
                   {activeTab === 'settings' && 'Configure platform settings.'}
                 </p>
               </div>
