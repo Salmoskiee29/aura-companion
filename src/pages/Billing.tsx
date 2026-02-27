@@ -16,10 +16,10 @@ const tierIcons: Record<TierKey, typeof Sparkles> = {
 };
 
 const tierFeatures: Record<TierKey, string[]> = {
-  free: ['10 diamonds to start', 'AI chat only', 'No human priority', 'No image requests'],
-  basic: ['Unlimited AI chat', '15 human replies/day', 'Standard priority', 'Access official models', 'Purchase diamond bundles'],
-  premium: ['Unlimited AI chat', '50 human replies/day', 'Faster priority', 'Extended memory', '50 daily diamond bonus', 'Discounted media'],
-  vip: ['Unlimited AI chat', 'Highest priority', 'Dedicated chatter', '150 daily diamond bonus', 'Media discounts', 'Exclusive content', 'VIP badge ✨'],
+  free: ['10 diamonds to start', 'AI chat (diamond-based)', '1 character slot', 'Basic AI image generation'],
+  basic: ['Unlimited AI chat', '15 daily AI chats', '5 character slots', 'Standard image generations', 'Purchase diamond bundles'],
+  premium: ['Unlimited AI chat', '50 daily AI chats', 'Unlimited characters', 'More image generations', '50 daily diamond bonus', 'Faster AI responses'],
+  vip: ['Unlimited AI chat', 'Unlimited daily chats', 'Unlimited characters', 'Unlimited image generations', '150 daily diamond bonus', 'Priority AI responses', 'VIP badge ✨'],
 };
 
 const Billing = () => {
@@ -54,13 +54,11 @@ const Billing = () => {
   useEffect(() => {
     if (!user) return;
     checkSubscription();
-    // Load gem balance
     supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single().then(({ data }) => {
       if (data) setGemBalance(data.balance);
     });
   }, [user, checkSubscription]);
 
-  // Check after Stripe redirect
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
       toast.success('Payment successful! Checking subscription...');
@@ -71,7 +69,6 @@ const Billing = () => {
     }
   }, [searchParams, checkSubscription]);
 
-  // Auto refresh every minute
   useEffect(() => {
     const interval = setInterval(checkSubscription, 60000);
     return () => clearInterval(interval);
@@ -126,7 +123,6 @@ const Billing = () => {
 
   return (
     <div className="p-6 md:p-8 space-y-12">
-      {/* Header */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
         <h1 className="text-4xl md:text-5xl font-display font-bold text-foreground mb-4">
           Choose Your <span className="text-gradient-primary">Plan</span>
@@ -134,15 +130,13 @@ const Billing = () => {
         <p className="text-muted-foreground text-lg max-w-lg mx-auto">
           Start free, upgrade anytime. Cancel whenever you want.
         </p>
-
-        {/* Current status */}
         <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium">
             <Crown className="h-4 w-4" />
             {TIERS[currentTier].name} Plan
           </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border text-foreground text-sm font-medium">
-         <Diamond className="h-4 w-4 text-primary" />
+            <Diamond className="h-4 w-4 text-primary" />
             {gemBalance} Diamonds
           </div>
           {subscriptionEnd && (
@@ -153,7 +147,6 @@ const Billing = () => {
         </div>
       </motion.div>
 
-      {/* Subscription Tiers */}
       <div className="grid md:grid-cols-4 gap-5 max-w-6xl mx-auto">
         {tierKeys.map((key, i) => {
           const tier = TIERS[key];
@@ -222,7 +215,6 @@ const Billing = () => {
         })}
       </div>
 
-      {/* Gem Store */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="text-center mb-8">
           <h2 className="text-2xl font-display font-bold text-foreground mb-2">
@@ -230,10 +222,9 @@ const Billing = () => {
             Diamond Store
           </h2>
           <p className="text-muted-foreground text-sm">
-            Use diamonds for AI images, voice messages, premium content, and more.
+            Use diamonds for AI chats and image generations on the free plan.
           </p>
         </div>
-
         <div className="grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
           {DIAMOND_BUNDLES.map((bundle, i) => (
             <motion.div
@@ -260,7 +251,6 @@ const Billing = () => {
         </div>
       </motion.div>
 
-      {/* Refresh */}
       <div className="text-center">
         <Button
           variant="ghost"
