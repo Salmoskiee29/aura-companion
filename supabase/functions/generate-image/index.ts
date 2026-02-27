@@ -7,6 +7,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Tier-based daily image generation limits
+const TIER_IMAGE_LIMITS: Record<string, number> = {
+  free: 3,
+  basic: 10,
+  premium: 30,
+  vip: 999,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -40,6 +48,54 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Check subscription tier and enforce image generation limits
+    const { data: sub } = await serviceClient
+      .from("subscriptions")
+      .select("status, tier")
+      .eq("user_id", user.id)
+      .single();
+
+    const tier = (sub?.status === "active" && sub?.tier) ? sub.tier : "free";
+    const dailyLimit = TIER_IMAGE_LIMITS[tier] || 3;
+
+    // Count today's image generations
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count: todayCount } = await serviceClient
+      .from("gem_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("type", "image_gen")
+      .gte("created_at", todayStart.toISOString());
+
+    if ((todayCount ?? 0) >= dailyLimit) {
+      return new Response(JSON.stringify({ error: `Daily image generation limit reached (${dailyLimit}). Upgrade your plan for more.` }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // For free users, also check diamond balance
+    if (tier === "free") {
+      const { data: wallet } = await serviceClient
+        .from("gem_wallets")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!wallet || wallet.balance < 2) {
+        return new Response(JSON.stringify({ error: "Not enough diamonds for image generation (costs 2 diamonds)." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -102,18 +158,12 @@ serve(async (req) => {
     const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
     const fileName = `${user.id}/${crypto.randomUUID()}.png`;
 
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
     const { error: uploadError } = await serviceClient.storage
       .from("character-avatars")
       .upload(fileName, imageBytes, { contentType: "image/png", upsert: false });
 
     if (uploadError) {
       console.error("[GENERATE-IMAGE] Upload error:", uploadError);
-      // Return base64 as fallback
       return new Response(JSON.stringify({ imageUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -122,6 +172,29 @@ serve(async (req) => {
     const { data: publicUrlData } = serviceClient.storage
       .from("character-avatars")
       .getPublicUrl(fileName);
+
+    // Track usage
+    await serviceClient.from("gem_transactions").insert({
+      user_id: user.id,
+      amount: tier === "free" ? -2 : 0,
+      type: "image_gen",
+      description: "AI image generation",
+    });
+
+    // Deduct diamonds for free users
+    if (tier === "free") {
+      const { data: wallet } = await serviceClient
+        .from("gem_wallets")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+      if (wallet) {
+        await serviceClient
+          .from("gem_wallets")
+          .update({ balance: Math.max(0, wallet.balance - 2) })
+          .eq("user_id", user.id);
+      }
+    }
 
     console.log("[GENERATE-IMAGE] Image uploaded:", publicUrlData.publicUrl);
 

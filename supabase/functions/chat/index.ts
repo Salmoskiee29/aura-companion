@@ -7,6 +7,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Tier-based daily chat limits
+const TIER_CHAT_LIMITS: Record<string, number> = {
+  free: 0, // free users use diamonds per message
+  basic: 15,
+  premium: 50,
+  vip: 999,
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -44,18 +52,22 @@ serve(async (req) => {
       });
     }
 
-    // Check subscription or diamond balance
-    const { data: sub } = await supabase
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Check subscription and enforce limits
+    const { data: sub } = await serviceClient
       .from("subscriptions")
       .select("*")
       .eq("user_id", userId)
       .single();
 
-    if (sub && sub.status !== "active") {
-      const serviceClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
+    const tier = (sub?.status === "active" && sub?.tier) ? sub.tier : "free";
+
+    if (tier === "free") {
+      // Free users spend diamonds per message
       const { data: wallet } = await serviceClient
         .from("gem_wallets")
         .select("balance")
@@ -68,23 +80,27 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+    } else {
+      // Paid users have daily chat limits
+      const dailyLimit = TIER_CHAT_LIMITS[tier] || 15;
+      const dailyUsed = sub?.daily_human_replies_used || 0;
+      
+      if (dailyUsed >= dailyLimit) {
+        return new Response(JSON.stringify({ error: `Daily chat limit reached (${dailyLimit} chats). Upgrade your plan for more.` }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Determine system prompt based on model type
     let systemPrompt = "You are a friendly, engaging AI companion. Be warm, flirty, and conversational. Keep responses concise (2-3 sentences). Use occasional emojis.";
-    
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     if (modelId) {
-      // Check if it's a user character (prefixed with "user-")
       const isUserCharacter = modelId.startsWith("user-");
       const actualId = isUserCharacter ? modelId.replace("user-", "") : modelId;
 
       if (isUserCharacter) {
-        // Load user character's personality prompt
         const { data: character } = await serviceClient
           .from("user_characters")
           .select("name, personality_prompt, description, tone")
@@ -99,7 +115,6 @@ serve(async (req) => {
           }
         }
       } else {
-        // Load public model's system prompt
         const { data: model } = await supabase
           .from("companion_models")
           .select("system_prompt, name, personality, traits")
@@ -154,8 +169,9 @@ serve(async (req) => {
       });
     }
 
-    // Deduct diamond if on free plan
-    if (sub && sub.status !== "active") {
+    // Deduct usage after successful AI response
+    if (tier === "free") {
+      // Deduct diamond
       const { data: wallet } = await serviceClient
         .from("gem_wallets")
         .select("balance")
@@ -175,6 +191,12 @@ serve(async (req) => {
         type: "spent",
         description: "AI chat message (diamond spent)",
       });
+    } else {
+      // Increment daily usage for paid users
+      await serviceClient
+        .from("subscriptions")
+        .update({ daily_human_replies_used: (sub?.daily_human_replies_used || 0) + 1 })
+        .eq("user_id", userId);
     }
 
     return new Response(response.body, {
