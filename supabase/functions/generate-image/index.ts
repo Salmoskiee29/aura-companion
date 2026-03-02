@@ -114,7 +114,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: `Generate a high-quality portrait image of an AI character with the following description: ${prompt}. The image should be a realistic portrait photo, well-lit, professional quality. Do not include any text in the image.`,
+            content: `Generate a high-quality portrait image of an AI character with the following description: ${prompt}. The image should be a realistic portrait photo, well-lit, professional quality. Do not include any text in the image.${negativePrompt ? ` Avoid: ${negativePrompt}.` : ''}`,
           },
         ],
         modalities: ["image", "text"],
