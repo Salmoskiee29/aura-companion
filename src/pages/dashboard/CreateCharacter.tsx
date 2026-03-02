@@ -1,42 +1,81 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, ImagePlus } from 'lucide-react';
+import { Sparkles, Loader2, ImagePlus, Shuffle, RotateCcw, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { CharacterSelections, defaultSelections } from '@/components/character-creator/types';
+import { categories } from '@/components/character-creator/optionData';
+import { buildPositivePrompt, getNegativePrompt } from '@/components/character-creator/promptBuilder';
+import OptionSection from '@/components/character-creator/OptionSection';
+import RealismSlider from '@/components/character-creator/RealismSlider';
 
 const toneOptions = ['Friendly', 'Romantic', 'Playful', 'Mysterious', 'Confident', 'Caring', 'Witty', 'Bold'];
+
+function randomize(): CharacterSelections {
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  const cat = (id: string) => categories.find((c) => c.id === id)!;
+  const pickField = (catId: string, key: string) => {
+    const field = cat(catId).options.find((f) => f.key === key)!;
+    return pick(field.choices!);
+  };
+
+  return {
+    gender: pickField('appearance', 'gender'),
+    ageRange: pickField('appearance', 'ageRange'),
+    ethnicity: pickField('appearance', 'ethnicity'),
+    skinTone: pickField('appearance', 'skinTone'),
+    hairColor: pickField('hair', 'hairColor'),
+    hairLength: pickField('hair', 'hairLength'),
+    hairStyle: pickField('hair', 'hairStyle'),
+    bodyType: pickField('body', 'bodyType'),
+    height: pickField('body', 'height'),
+    clothingStyle: pickField('outfit', 'clothingStyle'),
+    clothingColor: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
+    accessories: [pickField('outfit', 'accessories')],
+    facialExpression: pickField('expression', 'facialExpression'),
+    eyeDirection: pickField('expression', 'eyeDirection'),
+    location: pickField('environment', 'location'),
+    timeOfDay: pickField('environment', 'timeOfDay'),
+    lighting: pickField('environment', 'lighting'),
+    shotType: pickField('camera', 'shotType'),
+    angle: pickField('camera', 'angle'),
+    lens: pickField('camera', 'lens'),
+    realismLevel: pick(['standard', 'high', 'ultra'] as const),
+  };
+}
 
 export default function CreateCharacter() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [personalityPrompt, setPersonalityPrompt] = useState('');
   const [tone, setTone] = useState('Friendly');
+  const [selections, setSelections] = useState<CharacterSelections>(defaultSelections);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  const positivePrompt = useMemo(() => buildPositivePrompt(selections), [selections]);
+  const negativePrompt = getNegativePrompt();
+
+  const handleChange = (key: keyof CharacterSelections, value: any) => {
+    setSelections((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleGenerate = async () => {
-    if (!description.trim()) {
-      toast.error('Please enter a character description first.');
-      return;
-    }
     setIsGenerating(true);
     setGeneratedImages([]);
     setSelectedImage(null);
 
     try {
-      const prompt = `${description}. Personality: ${tone}. ${name ? `Name: ${name}.` : ''}`;
-      
-      // Generate 2 images in parallel
       const results = await Promise.allSettled([
-        supabase.functions.invoke('generate-image', { body: { prompt } }),
-        supabase.functions.invoke('generate-image', { body: { prompt: prompt + ' Different angle and expression.' } }),
+        supabase.functions.invoke('generate-image', { body: { prompt: positivePrompt, negativePrompt } }),
+        supabase.functions.invoke('generate-image', { body: { prompt: positivePrompt + ', different angle and expression', negativePrompt } }),
       ]);
 
       const images: string[] = [];
@@ -47,7 +86,7 @@ export default function CreateCharacter() {
       }
 
       if (images.length === 0) {
-        toast.error('Image generation failed. Try a different description.');
+        toast.error('Image generation failed. Try adjusting your selections.');
       } else {
         setGeneratedImages(images);
         setSelectedImage(images[0]);
@@ -73,10 +112,10 @@ export default function CreateCharacter() {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('user_characters' as any).insert({
+      const { error } = await supabase.from('user_characters').insert({
         user_id: user.id,
         name: name.trim(),
-        description: description.trim(),
+        description: positivePrompt,
         personality_prompt: personalityPrompt.trim(),
         tone,
         avatar_url: selectedImage || null,
@@ -99,14 +138,14 @@ export default function CreateCharacter() {
         <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Create Your <span className="text-gradient-primary">Character</span>
         </h1>
-        <p className="text-muted-foreground">Design a unique AI companion with a custom personality and AI-generated avatar.</p>
+        <p className="text-muted-foreground">Customize every detail and generate an AI portrait — no typing needed.</p>
       </motion.div>
 
-      <div className="space-y-6">
-        {/* Basic Info */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+      <div className="space-y-4">
+        {/* Name & Personality */}
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Character Name *</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Character Name *</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -114,40 +153,25 @@ export default function CreateCharacter() {
               className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
-
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Character Description *</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Personality Prompt *</label>
             <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your character's appearance, style, and vibe... (e.g. A cheerful 25-year-old with long dark hair, warm brown eyes, casual outfit, friendly smile)"
+              value={personalityPrompt}
+              onChange={(e) => setPersonalityPrompt(e.target.value)}
+              placeholder="How should your character behave in conversations? (e.g. You are Luna, a warm companion who loves deep conversations...)"
               rows={3}
               className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
           </div>
-
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Personality Prompt *</label>
-            <textarea
-              value={personalityPrompt}
-              onChange={(e) => setPersonalityPrompt(e.target.value)}
-              placeholder="How should your character behave in conversations? (e.g. You are Luna, a warm and caring companion who loves deep conversations about life, art, and dreams. You're empathetic, curious, and always supportive.)"
-              rows={4}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Tone / Style</label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Tone / Style</label>
             <div className="flex flex-wrap gap-2">
-              {toneOptions.map(t => (
+              {toneOptions.map((t) => (
                 <button
                   key={t}
                   onClick={() => setTone(t)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    tone === t
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-muted'
+                    tone === t ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   {t}
@@ -157,37 +181,63 @@ export default function CreateCharacter() {
           </div>
         </div>
 
-        {/* Image Generation */}
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4 font-sans flex items-center gap-2">
+        {/* Utility Buttons */}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setSelections(randomize())} className="flex-1 border-border text-foreground">
+            <Shuffle className="mr-2 h-4 w-4" /> Randomize
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setSelections(defaultSelections)} className="flex-1 border-border text-foreground">
+            <RotateCcw className="mr-2 h-4 w-4" /> Reset
+          </Button>
+        </div>
+
+        {/* Customization Sections */}
+        {categories.map((cat) => (
+          <OptionSection key={cat.id} category={cat} selections={selections} onChange={handleChange} />
+        ))}
+
+        {/* Realism */}
+        <RealismSlider value={selections.realismLevel} onChange={(v) => handleChange('realismLevel', v)} />
+
+        {/* Advanced View */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/30 transition-colors"
+          >
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">🔍 Advanced View</span>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+          </button>
+          {showAdvanced && (
+            <div className="px-5 pb-5 space-y-3">
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Positive Prompt</span>
+                <p className="text-xs text-foreground bg-secondary rounded-xl p-3 leading-relaxed break-words">{positivePrompt}</p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Negative Prompt</span>
+                <p className="text-xs text-foreground bg-secondary rounded-xl p-3 leading-relaxed break-words">{negativePrompt}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Generate */}
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <ImagePlus className="h-5 w-5 text-primary" />
             AI Avatar Generation
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Generate an AI portrait based on your character description. You can regenerate until you're happy.
-          </p>
-
-          <Button
-            onClick={handleGenerate}
-            disabled={isGenerating || !description.trim()}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base"
-          >
+          <Button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base">
             {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Generating Images...
-              </>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Images...</>
             ) : (
-              <>
-                <Sparkles className="mr-2 h-5 w-5" />
-                Generate Character Images
-              </>
+              <><Sparkles className="mr-2 h-5 w-5" /> Generate Character Images</>
             )}
           </Button>
 
-          {/* Generated Images Grid */}
           {generatedImages.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-5">
               <p className="text-sm text-muted-foreground mb-3">Select your favorite:</p>
               <div className="grid grid-cols-2 gap-4">
                 {generatedImages.map((img, i) => (
@@ -207,12 +257,7 @@ export default function CreateCharacter() {
                   </button>
                 ))}
               </div>
-              <Button
-                variant="outline"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="w-full mt-4 border-border text-foreground"
-              >
+              <Button variant="outline" onClick={handleGenerate} disabled={isGenerating} className="w-full mt-4 border-border text-foreground">
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                 Regenerate
               </Button>
@@ -227,15 +272,9 @@ export default function CreateCharacter() {
           className="w-full btn-premium text-primary-foreground py-6 text-base"
         >
           {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Saving Character...
-            </>
+            <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Character...</>
           ) : (
-            <>
-              <Sparkles className="mr-2 h-5 w-5" />
-              Save Character
-            </>
+            <><Sparkles className="mr-2 h-5 w-5" /> Save Character</>
           )}
         </Button>
       </div>
