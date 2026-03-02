@@ -42,7 +42,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt } = await req.json();
+    const { prompt, negativePrompt } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "prompt is required" }), {
         status: 400,
