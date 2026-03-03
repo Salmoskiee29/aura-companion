@@ -16,7 +16,7 @@ const interestOptions = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [nickname, setNickname] = useState(user?.displayName || '');
   const [interests, setInterests] = useState<string[]>([]);
