@@ -16,7 +16,7 @@ const interestOptions = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(0);
   const [nickname, setNickname] = useState(user?.displayName || '');
   const [interests, setInterests] = useState<string[]>([]);
@@ -66,8 +66,9 @@ export default function Onboarding() {
           onboarding_completed: true,
         })
         .eq('user_id', user.id);
+      await refreshUser();
       toast.success("You're all set! Let's go 🎉");
-      navigate('/dashboard/models', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch {
       toast.error('Failed to save. Please try again.');
     } finally {
