@@ -24,42 +24,47 @@ serve(async (req) => {
   try {
     // Check if master admin already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const masterExists = existingUsers?.users?.some(u => u.email === MASTER_EMAIL);
+    const existingUser = existingUsers?.users?.find(u => u.email === MASTER_EMAIL);
 
-    if (masterExists) {
-      console.log("[SEED] Master admin already exists, skipping.");
-      return new Response(JSON.stringify({ message: "Master admin already exists" }), {
+    if (existingUser) {
+      // User exists — ensure password is set and role is developer
+      await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+        password: MASTER_PASSWORD,
+        email_confirm: true,
+        user_metadata: { display_name: MASTER_DISPLAY_NAME },
+      });
+
+      await supabaseAdmin
+        .from("user_roles")
+        .update({ role: "developer" })
+        .eq("user_id", existingUser.id);
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({ display_name: MASTER_DISPLAY_NAME, onboarding_completed: true })
+        .eq("user_id", existingUser.id);
+
+      console.log(`[SEED] Master admin updated: ${MASTER_EMAIL}`);
+      return new Response(JSON.stringify({ success: true, message: "Master admin updated" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create the master admin user
+    // Create new master admin
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: MASTER_EMAIL,
       password: MASTER_PASSWORD,
       email_confirm: true,
       user_metadata: { display_name: MASTER_DISPLAY_NAME },
     });
-
     if (createError) throw new Error(createError.message);
 
     const userId = newUser.user.id;
 
-    // The handle_new_user trigger creates profile + user_role='user' + subscription + wallet.
-    // Update the role to 'developer' (master admin = developer role).
-    await supabaseAdmin
-      .from("user_roles")
-      .update({ role: "developer" })
-      .eq("user_id", userId);
-
-    // Update the profile display name
-    await supabaseAdmin
-      .from("profiles")
-      .update({ display_name: MASTER_DISPLAY_NAME, onboarding_completed: true })
-      .eq("user_id", userId);
+    await supabaseAdmin.from("user_roles").update({ role: "developer" }).eq("user_id", userId);
+    await supabaseAdmin.from("profiles").update({ display_name: MASTER_DISPLAY_NAME, onboarding_completed: true }).eq("user_id", userId);
 
     console.log(`[SEED] Master admin created: ${MASTER_EMAIL}`);
-
     return new Response(JSON.stringify({ success: true, message: "Master admin created" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
