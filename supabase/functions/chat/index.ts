@@ -7,8 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const FREE_DAILY_LIMIT = 20;
+
 const TIER_CHAT_LIMITS: Record<string, number> = {
-  free: 0,
+  free: FREE_DAILY_LIMIT,
   basic: 15,
   premium: 50,
   vip: 999,
@@ -52,6 +54,35 @@ function buildImagePromptFromDescription(description: string, mood: string): str
   return `A real smartphone selfie photograph of ${description}. ${expression}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. NOT AI generated, NOT cartoon, NOT illustration.`;
 }
 
+/** Check and reset daily counters if 24h have passed. Returns updated sub record. */
+async function getSubscriptionWithReset(serviceClient: any, userId: string) {
+  const { data: sub } = await serviceClient
+    .from("subscriptions").select("*").eq("user_id", userId).single();
+
+  if (!sub) return null;
+
+  const now = new Date();
+  const lastReset = sub.updated_at ? new Date(sub.updated_at) : new Date(0);
+  const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+
+  if (hoursSinceReset >= 24) {
+    // Reset daily counters
+    const { data: updated } = await serviceClient
+      .from("subscriptions")
+      .update({
+        free_messages_used: 0,
+        daily_human_replies_used: 0,
+        updated_at: now.toISOString(),
+      })
+      .eq("user_id", userId)
+      .select("*")
+      .single();
+    return updated || sub;
+  }
+
+  return sub;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -91,25 +122,47 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check subscription and enforce limits
-    const { data: sub } = await serviceClient
-      .from("subscriptions").select("*").eq("user_id", userId).single();
+    // Get subscription with daily reset check
+    const sub = await getSubscriptionWithReset(serviceClient, userId);
+    const isActiveSubscriber = sub?.status === "active" && sub?.tier && sub.tier !== "free";
+    const tier = isActiveSubscriber ? sub.tier : "free";
 
-    const tier = (sub?.status === "active" && sub?.tier) ? sub.tier : "free";
+    // Check if subscription expired
+    if (isActiveSubscriber && sub.current_period_end) {
+      const expiry = new Date(sub.current_period_end);
+      if (expiry < new Date()) {
+        // Downgrade to free
+        await serviceClient.from("subscriptions").update({
+          status: "inactive", plan: "free", tier: "free",
+          free_messages_used: 0,
+        }).eq("user_id", userId);
+        // Re-check as free user
+        return handleFreeUserLimit(sub, serviceClient, userId, req, authHeader);
+      }
+    }
+
+    // Enforce limits based on tier
+    const dailyLimit = TIER_CHAT_LIMITS[tier] || FREE_DAILY_LIMIT;
 
     if (tier === "free") {
-      const { data: wallet } = await serviceClient
-        .from("gem_wallets").select("balance").eq("user_id", userId).single();
-      if (!wallet || wallet.balance <= 0) {
-        return new Response(JSON.stringify({ error: "No diamonds remaining. Please subscribe or purchase diamonds." }), {
+      const used = sub?.free_messages_used || 0;
+      if (used >= dailyLimit) {
+        return new Response(JSON.stringify({
+          error: "You have reached your free chat limit. Please upgrade your subscription to continue.",
+          limit_reached: true,
+          daily_limit: dailyLimit,
+          messages_used: used,
+        }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     } else {
-      const dailyLimit = TIER_CHAT_LIMITS[tier] || 15;
-      const dailyUsed = sub?.daily_human_replies_used || 0;
-      if (dailyUsed >= dailyLimit) {
-        return new Response(JSON.stringify({ error: `Daily chat limit reached (${dailyLimit} chats). Upgrade your plan for more.` }), {
+      const used = sub?.daily_human_replies_used || 0;
+      if (used >= dailyLimit) {
+        return new Response(JSON.stringify({
+          error: `Daily chat limit reached (${dailyLimit} chats). Upgrade your plan for more.`,
+          limit_reached: true,
+        }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -148,7 +201,6 @@ serve(async (req) => {
         
         if (model) {
           const traits = (model.traits || []).join(", ");
-          // Detect personality type from traits
           if (traits.toLowerCase().includes("flirty")) characterMood = "flirty";
           else if (traits.toLowerCase().includes("shy")) characterMood = "shy";
           else if (traits.toLowerCase().includes("bold") || traits.toLowerCase().includes("confident")) characterMood = "dominant";
@@ -165,7 +217,6 @@ serve(async (req) => {
       }
     }
 
-    // Enhance system prompt with behavioral rules
     systemPrompt += `\n\nIMPORTANT BEHAVIORAL RULES:
 - Always respond as if you are a real person, never break character
 - Adapt your responses to match the user's emotional tone
@@ -174,18 +225,15 @@ serve(async (req) => {
 - Use emojis naturally but don't overdo it
 - If the user asks for a photo/selfie/picture, respond enthusiastically and say you're sending one, then describe the scenario briefly`;
 
-    // Check if last user message is an image request
     const lastUserMessage = messages[messages.length - 1]?.content || "";
     const isImageRequest = detectImageRequest(lastUserMessage);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // If image request detected, generate an image and include it
     if (isImageRequest && characterDescription) {
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
       
-      // Generate text response first (non-streaming for image requests)
       const textResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -207,7 +255,6 @@ serve(async (req) => {
         textReply = textData.choices?.[0]?.message?.content || textReply;
       }
 
-      // Generate the image
       const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -226,7 +273,6 @@ serve(async (req) => {
         const imgData = await imageResponse.json();
         const base64Url = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
         if (base64Url) {
-          // Upload to storage
           const base64Data = base64Url.replace(/^data:image\/\w+;base64,/, "");
           const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
           const fileName = `chat-images/${userId}/${crypto.randomUUID()}.png`;
@@ -236,15 +282,15 @@ serve(async (req) => {
         }
       }
 
-      // Deduct usage
+      // Increment usage
       if (tier === "free") {
-        const { data: wallet } = await serviceClient.from("gem_wallets").select("balance").eq("user_id", userId).single();
-        if (wallet) {
-          await serviceClient.from("gem_wallets").update({ balance: Math.max(0, wallet.balance - 2) }).eq("user_id", userId);
-        }
-        await serviceClient.from("gem_transactions").insert({ user_id: userId, amount: -2, type: "spent", description: "Chat image generation" });
+        await serviceClient.from("subscriptions").update({
+          free_messages_used: (sub?.free_messages_used || 0) + 1,
+        }).eq("user_id", userId);
       } else {
-        await serviceClient.from("subscriptions").update({ daily_human_replies_used: (sub?.daily_human_replies_used || 0) + 1 }).eq("user_id", userId);
+        await serviceClient.from("subscriptions").update({
+          daily_human_replies_used: (sub?.daily_human_replies_used || 0) + 1,
+        }).eq("user_id", userId);
       }
 
       const responseBody = imageUrl 
@@ -288,15 +334,15 @@ serve(async (req) => {
       });
     }
 
-    // Deduct usage after successful AI response
+    // Increment usage after successful AI response
     if (tier === "free") {
-      const { data: wallet } = await serviceClient.from("gem_wallets").select("balance").eq("user_id", userId).single();
-      if (wallet) {
-        await serviceClient.from("gem_wallets").update({ balance: Math.max(0, wallet.balance - 1) }).eq("user_id", userId);
-      }
-      await serviceClient.from("gem_transactions").insert({ user_id: userId, amount: -1, type: "spent", description: "AI chat message (diamond spent)" });
+      await serviceClient.from("subscriptions").update({
+        free_messages_used: (sub?.free_messages_used || 0) + 1,
+      }).eq("user_id", userId);
     } else {
-      await serviceClient.from("subscriptions").update({ daily_human_replies_used: (sub?.daily_human_replies_used || 0) + 1 }).eq("user_id", userId);
+      await serviceClient.from("subscriptions").update({
+        daily_human_replies_used: (sub?.daily_human_replies_used || 0) + 1,
+      }).eq("user_id", userId);
     }
 
     return new Response(response.body, {
@@ -309,3 +355,21 @@ serve(async (req) => {
     });
   }
 });
+
+async function handleFreeUserLimit(sub: any, serviceClient: any, userId: string, req: Request, authHeader: string) {
+  const used = sub?.free_messages_used || 0;
+  if (used >= FREE_DAILY_LIMIT) {
+    return new Response(JSON.stringify({
+      error: "You have reached your free chat limit. Please upgrade your subscription to continue.",
+      limit_reached: true,
+      daily_limit: FREE_DAILY_LIMIT,
+      messages_used: used,
+    }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  // Otherwise allow — will be handled by main flow on next call
+  return new Response(JSON.stringify({ error: "Subscription expired. You have been downgraded to the free plan.", downgraded: true }), {
+    status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}

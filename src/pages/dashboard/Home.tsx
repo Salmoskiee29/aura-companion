@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Users, Sparkles, MessageCircle, UserCircle, ArrowRight } from 'lucide-react';
+import { Users, Sparkles, MessageCircle, UserCircle, ArrowRight, Crown, Diamond, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface RecentChat {
   modelId: string;
@@ -12,6 +13,31 @@ interface RecentChat {
   modelAvatar: string;
   online: boolean;
 }
+
+interface SubInfo {
+  tier: string;
+  status: string;
+  free_messages_used: number;
+  free_messages_limit: number;
+  daily_human_replies_used: number;
+  daily_human_replies_limit: number;
+}
+
+const FREE_DAILY_LIMIT = 20;
+
+const TIER_LABELS: Record<string, string> = {
+  free: 'Free Tier',
+  basic: 'Basic Subscriber',
+  premium: 'Premium Subscriber',
+  vip: 'VIP Subscriber',
+};
+
+const TIER_ICONS: Record<string, typeof Sparkles> = {
+  free: Sparkles,
+  basic: Crown,
+  premium: Crown,
+  vip: Zap,
+};
 
 const quickActions = [
   { to: '/dashboard/models', icon: Users, label: 'Browse Models', desc: 'Chat with public AI companions' },
@@ -24,9 +50,13 @@ export default function DashboardHome() {
   const { user } = useAuth();
   const [recentChats, setRecentChats] = useState<RecentChat[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
+  const [subInfo, setSubInfo] = useState<SubInfo | null>(null);
+  const [gemBalance, setGemBalance] = useState(0);
 
   useEffect(() => {
     if (!user) return;
+
+    // Fetch recent chats
     const fetchRecent = async () => {
       const { data: convs } = await supabase
         .from('conversations')
@@ -53,8 +83,36 @@ export default function DashboardHome() {
       }
       setLoadingRecent(false);
     };
+
+    // Fetch subscription info
+    const fetchSub = async () => {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('tier, status, free_messages_used, free_messages_limit, daily_human_replies_used, daily_human_replies_limit')
+        .eq('user_id', user.id)
+        .single();
+      if (data) setSubInfo(data as SubInfo);
+    };
+
+    // Fetch gem balance
+    const fetchGems = async () => {
+      const { data } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
+      if (data) setGemBalance(data.balance);
+    };
+
     fetchRecent();
+    fetchSub();
+    fetchGems();
   }, [user]);
+
+  const tier = (subInfo?.status === 'active' && subInfo?.tier && subInfo.tier !== 'free') ? subInfo.tier : 'free';
+  const TierIcon = TIER_ICONS[tier] || Sparkles;
+  const tierLabel = TIER_LABELS[tier] || 'Free Tier';
+
+  const isFree = tier === 'free';
+  const messagesUsed = isFree ? (subInfo?.free_messages_used || 0) : (subInfo?.daily_human_replies_used || 0);
+  const messagesLimit = isFree ? FREE_DAILY_LIMIT : (subInfo?.daily_human_replies_limit || 999);
+  const messagesRemaining = Math.max(0, messagesLimit - messagesUsed);
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
@@ -62,9 +120,41 @@ export default function DashboardHome() {
         <h1 className="text-3xl font-display font-bold text-foreground mb-2">
           Welcome back, <span className="text-gradient-primary">{user?.displayName || 'there'}</span>
         </h1>
-        <p className="text-muted-foreground mb-8">What would you like to do today?</p>
+        <p className="text-muted-foreground mb-6">What would you like to do today?</p>
 
-        {/* Recent chats - resume instantly */}
+        {/* Subscription Status Card */}
+        <div className="mb-8 rounded-2xl border border-border bg-card p-5">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30">
+              <TierIcon className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">{tierLabel}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/50 border border-border">
+              <Diamond className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">{gemBalance} Diamonds</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-foreground">
+                {isFree
+                  ? `Free Messages Remaining Today: ${messagesRemaining}`
+                  : messagesLimit >= 999
+                    ? 'Unlimited chats'
+                    : `${messagesRemaining} chats remaining today`
+                }
+              </span>
+            </div>
+            {isFree && (
+              <Link to="/billing">
+                <Button size="sm" className="btn-premium text-primary-foreground text-xs">
+                  Upgrade Plan
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* Recent chats */}
         {loadingRecent ? (
           <div className="mb-8">
             <Skeleton className="h-5 w-36 mb-3" />
