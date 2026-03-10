@@ -195,9 +195,11 @@ const AdminDashboard = () => {
                 <Button variant="outline" size="sm" onClick={fetchUsers}>
                   <RefreshCw className="mr-1 h-3 w-3" /> Refresh
                 </Button>
-                <Button size="sm" className="bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground" onClick={() => setShowCreateForm(!showCreateForm)}>
-                  <Plus className="mr-1 h-3 w-3" /> Create Account
-                </Button>
+                {isDeveloper && (
+                  <Button size="sm" className="bg-admin-primary hover:bg-admin-primary/90 text-admin-primary-foreground" onClick={() => setShowCreateForm(!showCreateForm)}>
+                    <Plus className="mr-1 h-3 w-3" /> Create Administrator
+                  </Button>
+                )}
               </div>
             )}
           </div>
