@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.add-gems]
 verify_jwt = false
+
+[functions.seed-master-admin]
+verify_jwt = false
