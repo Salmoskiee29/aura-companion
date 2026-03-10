@@ -13,6 +13,7 @@ interface ChatMessage {
   text: string;
   time: string;
   pending?: boolean;
+  imageUrl?: string;
 }
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
