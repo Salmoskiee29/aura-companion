@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
 import { ModelManagement } from '@/components/admin/ModelManagement';
+import { SubscriptionManagement } from '@/components/admin/SubscriptionManagement';
 
 type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'subscriptions' | 'settings';
 
@@ -291,11 +292,7 @@ const AdminDashboard = () => {
           {/* Subscriptions Tab */}
           {activeTab === 'subscriptions' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="bg-card border border-border rounded-2xl p-12 text-center">
-                <CreditCard className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">Subscription Management</h3>
-                <p className="text-sm text-muted-foreground">View and manage user subscriptions and billing.</p>
-              </div>
+              <SubscriptionManagement />
             </motion.div>
           )}
 
