@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
 import { ModelManagement } from '@/components/admin/ModelManagement';
+import { SubscriptionManagement } from '@/components/admin/SubscriptionManagement';
 
 type AdminTab = 'dashboard' | 'analytics' | 'models' | 'conversations' | 'users' | 'subscriptions' | 'settings';
 
