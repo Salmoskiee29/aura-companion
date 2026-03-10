@@ -4,6 +4,12 @@ export interface CharacterSelections {
   ageRange: string;
   ethnicity: string;
   skinTone: string;
+  faceShape: string;
+  // Eyes
+  eyeColor: string;
+  // Nose & Lips
+  noseType: string;
+  lipsStyle: string;
   // Hair
   hairColor: string;
   hairLength: string;
@@ -15,9 +21,10 @@ export interface CharacterSelections {
   clothingStyle: string;
   clothingColor: string;
   accessories: string[];
-  // Expression
+  // Expression & Mood
   facialExpression: string;
   eyeDirection: string;
+  mood: string;
   // Environment
   location: string;
   timeOfDay: string;
@@ -35,6 +42,10 @@ export const defaultSelections: CharacterSelections = {
   ageRange: '18–25',
   ethnicity: 'Caucasian',
   skinTone: 'Light',
+  faceShape: 'Oval',
+  eyeColor: 'Brown',
+  noseType: 'Straight',
+  lipsStyle: 'Full',
   hairColor: 'Brown',
   hairLength: 'Long',
   hairStyle: 'Straight',
@@ -45,13 +56,14 @@ export const defaultSelections: CharacterSelections = {
   accessories: ['None'],
   facialExpression: 'Soft Smile',
   eyeDirection: 'Looking at camera',
+  mood: 'Flirty',
   location: 'Studio',
   timeOfDay: 'Golden hour',
   lighting: 'Soft light',
   shotType: 'Half body',
   angle: 'Eye level',
   lens: '85mm',
-  realismLevel: 'high',
+  realismLevel: 'ultra',
 };
 
 export interface OptionCategory {

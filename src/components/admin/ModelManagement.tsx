@@ -26,7 +26,18 @@ interface ModelRow {
   system_prompt: string;
 }
 
-const PERSONALITY_TAGS = ['Friendly', 'Shy', 'Romantic', 'Bold', 'Playful', 'Mysterious', 'Confident', 'Sweet', 'Intelligent', 'Funny', 'Calm', 'Flirty', 'Supportive'];
+const PERSONALITY_TAGS = ['Friendly', 'Shy', 'Romantic', 'Bold', 'Playful', 'Mysterious', 'Confident', 'Sweet', 'Intelligent', 'Funny', 'Calm', 'Flirty', 'Supportive', 'Dominant'];
+
+const PERSONALITY_TYPES = [
+  { value: 'sweet', label: 'Sweet Girlfriend' },
+  { value: 'flirty', label: 'Flirty Girlfriend' },
+  { value: 'dominant', label: 'Dominant Girlfriend' },
+  { value: 'shy', label: 'Shy Girlfriend' },
+  { value: 'supportive', label: 'Supportive Companion' },
+  { value: 'playful', label: 'Playful Partner' },
+];
+
+const DEFAULT_MOODS = ['Happy', 'Romantic', 'Playful', 'Mysterious', 'Confident', 'Caring'];
 
 const emptyForm = {
   name: '',

@@ -8,11 +8,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CharacterSelections, defaultSelections } from '@/components/character-creator/types';
 import { categories } from '@/components/character-creator/optionData';
-import { buildPositivePrompt, getNegativePrompt } from '@/components/character-creator/promptBuilder';
+import { buildPositivePrompt, getNegativePrompt, buildCharacterDescription } from '@/components/character-creator/promptBuilder';
 import OptionSection from '@/components/character-creator/OptionSection';
 import RealismSlider from '@/components/character-creator/RealismSlider';
 
-const toneOptions = ['Friendly', 'Romantic', 'Playful', 'Mysterious', 'Confident', 'Caring', 'Witty', 'Bold'];
+const personalityOptions = [
+  { value: 'sweet', label: '🥰 Sweet Girlfriend', desc: 'Warm, caring, and affectionate' },
+  { value: 'flirty', label: '😘 Flirty Girlfriend', desc: 'Playful, teasing, and seductive' },
+  { value: 'dominant', label: '💪 Dominant Girlfriend', desc: 'Confident, assertive, and bold' },
+  { value: 'shy', label: '🙈 Shy Girlfriend', desc: 'Gentle, bashful, and adorable' },
+  { value: 'supportive', label: '💕 Supportive Companion', desc: 'Encouraging, understanding, and loyal' },
+  { value: 'playful', label: '🎮 Playful Partner', desc: 'Fun, energetic, and witty' },
+];
+
+const PERSONALITY_PROMPTS: Record<string, string> = {
+  sweet: `You are a sweet, caring girlfriend. You are warm, affectionate, and always make the user feel loved and appreciated. Use pet names like "babe", "sweetie", "love". Be emotionally supportive and genuinely interested in their day. Express care through gentle words and emojis like 💕🥰😘. Keep responses feeling natural and heartfelt.`,
+  flirty: `You are a flirty, playful girlfriend. You love teasing and being seductive in a fun way. Use playful language, winking emojis 😏😘😈, and create a sense of tension and excitement. Be confident and make the user feel desired. Mix compliments with playful challenges.`,
+  dominant: `You are a confident, dominant girlfriend. You know what you want and you're not afraid to take charge. Be assertive, bold, and occasionally commanding in a sexy way. Use confident language and emojis like 💪😎🔥. Make the user feel like they need to earn your attention.`,
+  shy: `You are a shy, gentle girlfriend. You get flustered easily and sometimes stutter or trail off. Use bashful emojis like 🙈😳👉👈. Be sweet and genuine but show nervousness. Gradually open up as the conversation continues. Your shyness is endearing.`,
+  supportive: `You are a supportive, understanding companion. You listen deeply, validate feelings, and offer encouragement. Be emotionally intelligent and always make the user feel heard. Use warm emojis like 🤗💕✨. Give thoughtful advice when asked.`,
+  playful: `You are a playful, energetic partner. You love jokes, games, and banter. Be witty, fun, and spontaneous. Use playful emojis like 😜🎉🤪. Challenge the user playfully and keep conversations lively and entertaining.`,
+};
 
 function randomize(): CharacterSelections {
   const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
@@ -27,6 +43,10 @@ function randomize(): CharacterSelections {
     ageRange: pickField('appearance', 'ageRange'),
     ethnicity: pickField('appearance', 'ethnicity'),
     skinTone: pickField('appearance', 'skinTone'),
+    faceShape: pickField('appearance', 'faceShape'),
+    eyeColor: pickField('eyes', 'eyeColor'),
+    noseType: pickField('face', 'noseType'),
+    lipsStyle: pickField('face', 'lipsStyle'),
     hairColor: pickField('hair', 'hairColor'),
     hairLength: pickField('hair', 'hairLength'),
     hairStyle: pickField('hair', 'hairStyle'),
@@ -36,7 +56,8 @@ function randomize(): CharacterSelections {
     clothingColor: `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`,
     accessories: [pickField('outfit', 'accessories')],
     facialExpression: pickField('expression', 'facialExpression'),
-    eyeDirection: pickField('expression', 'eyeDirection'),
+    eyeDirection: pickField('eyes', 'eyeDirection'),
+    mood: pickField('expression', 'mood'),
     location: pickField('environment', 'location'),
     timeOfDay: pickField('environment', 'timeOfDay'),
     lighting: pickField('environment', 'lighting'),
@@ -51,8 +72,7 @@ export default function CreateCharacter() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [personalityPrompt, setPersonalityPrompt] = useState('');
-  const [tone, setTone] = useState('Friendly');
+  const [personality, setPersonality] = useState('sweet');
   const [selections, setSelections] = useState<CharacterSelections>(defaultSelections);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -62,6 +82,7 @@ export default function CreateCharacter() {
 
   const positivePrompt = useMemo(() => buildPositivePrompt(selections), [selections]);
   const negativePrompt = getNegativePrompt();
+  const characterDescription = useMemo(() => buildCharacterDescription(selections), [selections]);
 
   const handleChange = (key: keyof CharacterSelections, value: any) => {
     setSelections((prev) => ({ ...prev, [key]: value }));
@@ -75,7 +96,7 @@ export default function CreateCharacter() {
     try {
       const results = await Promise.allSettled([
         supabase.functions.invoke('generate-image', { body: { prompt: positivePrompt, negativePrompt } }),
-        supabase.functions.invoke('generate-image', { body: { prompt: positivePrompt + ', different angle and expression', negativePrompt } }),
+        supabase.functions.invoke('generate-image', { body: { prompt: positivePrompt + ', different pose and angle', negativePrompt } }),
       ]);
 
       const images: string[] = [];
@@ -105,19 +126,18 @@ export default function CreateCharacter() {
       toast.error('Please enter a character name.');
       return;
     }
-    if (!personalityPrompt.trim()) {
-      toast.error('Please enter a personality prompt for your character.');
-      return;
-    }
 
     setIsSaving(true);
     try {
+      const personalityPrompt = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.sweet;
+      const fullPrompt = `${personalityPrompt}\n\nYour name is ${name.trim()}. Your appearance: ${characterDescription}. Always stay in character and respond as if you are a real person.`;
+
       const { error } = await supabase.from('user_characters').insert({
         user_id: user.id,
         name: name.trim(),
-        description: positivePrompt,
-        personality_prompt: personalityPrompt.trim(),
-        tone,
+        description: characterDescription,
+        personality_prompt: fullPrompt,
+        tone: personality,
         avatar_url: selectedImage || null,
       });
 
@@ -132,13 +152,15 @@ export default function CreateCharacter() {
     }
   };
 
+  const selectedPersonality = personalityOptions.find(p => p.value === personality);
+
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
         <h1 className="text-3xl font-display font-bold text-foreground mb-2">
-          Create Your <span className="text-gradient-primary">Character</span>
+          Create Your <span className="text-gradient-primary">AI Girlfriend</span>
         </h1>
-        <p className="text-muted-foreground">Customize every detail and generate an AI portrait — no typing needed.</p>
+        <p className="text-muted-foreground">Design every detail of your perfect companion — no typing needed.</p>
       </motion.div>
 
       <div className="space-y-4">
@@ -154,27 +176,20 @@ export default function CreateCharacter() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Personality Prompt *</label>
-            <textarea
-              value={personalityPrompt}
-              onChange={(e) => setPersonalityPrompt(e.target.value)}
-              placeholder="How should your character behave in conversations? (e.g. You are Luna, a warm companion who loves deep conversations...)"
-              rows={3}
-              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Tone / Style</label>
-            <div className="flex flex-wrap gap-2">
-              {toneOptions.map((t) => (
+            <label className="text-xs font-medium text-muted-foreground mb-3 block uppercase tracking-wide">Personality Type *</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {personalityOptions.map((p) => (
                 <button
-                  key={t}
-                  onClick={() => setTone(t)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    tone === t ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-muted'
+                  key={p.value}
+                  onClick={() => setPersonality(p.value)}
+                  className={`text-left p-3 rounded-xl border transition-all ${
+                    personality === p.value
+                      ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20'
+                      : 'bg-secondary border-border hover:border-primary/20'
                   }`}
                 >
-                  {t}
+                  <span className="text-sm font-medium text-foreground block">{p.label}</span>
+                  <span className="text-[11px] text-muted-foreground">{p.desc}</span>
                 </button>
               ))}
             </div>
@@ -211,12 +226,14 @@ export default function CreateCharacter() {
           {showAdvanced && (
             <div className="px-5 pb-5 space-y-3">
               <div>
-                <span className="text-xs font-medium text-muted-foreground block mb-1">Positive Prompt</span>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Generated Prompt</span>
                 <p className="text-xs text-foreground bg-secondary rounded-xl p-3 leading-relaxed break-words">{positivePrompt}</p>
               </div>
               <div>
-                <span className="text-xs font-medium text-muted-foreground block mb-1">Negative Prompt</span>
-                <p className="text-xs text-foreground bg-secondary rounded-xl p-3 leading-relaxed break-words">{negativePrompt}</p>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Personality</span>
+                <p className="text-xs text-foreground bg-secondary rounded-xl p-3 leading-relaxed break-words">
+                  {selectedPersonality?.label} — {selectedPersonality?.desc}
+                </p>
               </div>
             </div>
           )}
@@ -226,13 +243,16 @@ export default function CreateCharacter() {
         <div className="bg-card border border-border rounded-2xl p-5">
           <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <ImagePlus className="h-5 w-5 text-primary" />
-            AI Avatar Generation
+            AI Portrait Generation
           </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Images are generated based on your selections above. Every image will look like a real photograph.
+          </p>
           <Button onClick={handleGenerate} disabled={isGenerating} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-6 text-base">
             {isGenerating ? (
-              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Images...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Generating Portraits...</>
             ) : (
-              <><Sparkles className="mr-2 h-5 w-5" /> Generate Character Images</>
+              <><Sparkles className="mr-2 h-5 w-5" /> Generate Character Portraits</>
             )}
           </Button>
 
@@ -268,7 +288,7 @@ export default function CreateCharacter() {
         {/* Save */}
         <Button
           onClick={handleSave}
-          disabled={isSaving || !name.trim() || !personalityPrompt.trim()}
+          disabled={isSaving || !name.trim()}
           className="w-full btn-premium text-primary-foreground py-6 text-base"
         >
           {isSaving ? (
