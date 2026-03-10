@@ -282,7 +282,39 @@ const Chat = () => {
         throw new Error(errData.error || 'Chat error');
       }
 
-      // Stream response
+      const contentType = resp.headers.get('Content-Type') || '';
+
+      // Handle JSON response (image requests)
+      if (contentType.includes('application/json')) {
+        const jsonData = await resp.json();
+        const assistantId = crypto.randomUUID();
+        const assistantText = jsonData.reply || '';
+        const imageUrl = jsonData.imageUrl || null;
+
+        setMessages(prev => [...prev, {
+          id: assistantId,
+          sender: 'model' as const,
+          text: assistantText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          imageUrl,
+        }]);
+        setIsTyping(false);
+
+        if (assistantText && conversationId) {
+          const msgContent = imageUrl ? `${assistantText}\n[Image: ${imageUrl}]` : assistantText;
+          await supabase.from('messages').insert({
+            conversation_id: conversationId,
+            message: msgContent,
+            sender_type: 'model',
+          });
+          if (subscription && subscription.status !== 'active') {
+            setDiamondBalance(prev => Math.max(0, prev - 2));
+          }
+        }
+        return;
+      }
+
+      // Stream response (standard chat)
       const reader = resp.body?.getReader();
       if (!reader) throw new Error('No stream');
       const decoder = new TextDecoder();
