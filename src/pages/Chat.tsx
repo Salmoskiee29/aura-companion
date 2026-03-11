@@ -195,10 +195,13 @@ const Chat = () => {
         if (msg.sender_type !== 'user') {
           setMessages(prev => {
             if (prev.some(m => m.id === msg.id)) return prev;
+            // Avoid duplicates from realtime when we already added the message client-side
+            const msgText = msg.message || '';
+            if (prev.some(m => m.sender === 'model' && m.text === msgText && msgText.length > 10)) return prev;
             return [...prev, {
               id: msg.id,
               sender: 'model' as const,
-              text: msg.message,
+              text: msgText,
               time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             }];
           });
