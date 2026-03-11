@@ -89,9 +89,20 @@ const Chat = () => {
           .from('companion_models')
           .select('id, name, avatar, online')
           .eq('id', actualId)
-          .single();
+          .maybeSingle();
         if (data) {
           charInfo = { ...data, isUserCharacter: false };
+        } else {
+          // Fallback: check user_characters in case the route is missing the user- prefix
+          const { data: ucData } = await supabase
+            .from('user_characters' as any)
+            .select('id, name, avatar_url, personality_prompt')
+            .eq('id', actualId)
+            .maybeSingle();
+          if (ucData) {
+            const d = ucData as any;
+            charInfo = { id: d.id, name: d.name, avatar: d.avatar_url || '', online: true, isUserCharacter: true };
+          }
         }
       }
 
