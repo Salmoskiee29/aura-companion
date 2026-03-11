@@ -265,6 +265,25 @@ ALWAYS:
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     if (isImageRequest && characterDescription) {
+      // Check image generation daily limit
+      const imageLimit = TIER_IMAGE_LIMITS[tier] || 3;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { count: todayImageCount } = await serviceClient
+        .from("gem_transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("type", "image_gen")
+        .gte("created_at", todayStart.toISOString());
+
+      if ((todayImageCount ?? 0) >= imageLimit) {
+        return new Response(JSON.stringify({
+          reply: `Sorry, you've reached your daily image limit (${imageLimit}). Upgrade your plan for more! 📸`,
+          limit_reached: true,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
       
       const textResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
