@@ -83,7 +83,7 @@ export const categories: OptionCategory[] = [
     label: 'Camera',
     icon: '📷',
     options: [
-      { key: 'shotType', label: 'Shot Type', type: 'select', choices: ['Close-up', 'Half body', 'Full body'] },
+      { key: 'shotType', label: 'Shot Type', type: 'select', choices: ['Half body', 'Upper body', 'Full body'] },
       { key: 'angle', label: 'Angle', type: 'select', choices: ['Eye level', 'High angle', 'Low angle', 'Selfie angle'] },
       { key: 'lens', label: 'Lens', type: 'select', choices: ['35mm', '50mm', '85mm', '135mm'] },
     ],

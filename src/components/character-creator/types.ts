@@ -76,6 +76,6 @@ export interface OptionCategory {
 export interface OptionField {
   key: keyof CharacterSelections;
   label: string;
-  type: 'select' | 'multi-select' | 'color';
+  type: 'select' | 'multi-select' | 'color' | 'number';
   choices?: string[];
 }
