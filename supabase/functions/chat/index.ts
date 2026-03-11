@@ -327,10 +327,12 @@ ALWAYS:
 - If the user asks for a photo/selfie/picture, respond enthusiastically and say you're sending one.`;
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
-    const isImageRequest = detectImageRequest(lastUserMessage);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Use AI-powered intent detection instead of rigid regex
+    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, LOVABLE_API_KEY);
 
     if (isImageRequest && characterDescription) {
       // Check image generation daily limit
@@ -352,7 +354,7 @@ ALWAYS:
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const userRequestStyle = extractImageStyle(lastUserMessage);
+      const userRequestStyle = detectedStyle;
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood, userRequestStyle);
       
       console.log("[CHAT] Image request detected. Avatar URL:", characterAvatarUrl ? "present" : "missing");
