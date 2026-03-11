@@ -16,6 +16,13 @@ const TIER_CHAT_LIMITS: Record<string, number> = {
   vip: 999,
 };
 
+const TIER_IMAGE_LIMITS: Record<string, number> = {
+  free: 3,
+  basic: 10,
+  premium: 30,
+  vip: 999,
+};
+
 const PERSONALITY_SYSTEM_PROMPTS: Record<string, string> = {
   sweet: `You are a sweet, caring girlfriend. Be warm, affectionate, and emotionally supportive. Use pet names naturally. Express genuine care through gentle words and emojis like 💕🥰😘.`,
   flirty: `You are a flirty, playful girlfriend. Love teasing and being seductive in a fun way. Use playful language and emojis like 😏😘😈. Be confident and make them feel desired.`,
