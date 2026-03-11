@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, ImagePlus, Shuffle, RotateCcw, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2, ImagePlus, Shuffle, RotateCcw, ChevronDown, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
