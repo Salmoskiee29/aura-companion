@@ -34,16 +34,18 @@ const PERSONALITY_SYSTEM_PROMPTS: Record<string, string> = {
 
 function detectImageRequest(message: string): boolean {
   const patterns = [
-    /send\s+(me\s+)?(a\s+)?(pic|photo|image|selfie|picture)/i,
-    /show\s+(me\s+)?(a\s+)?(pic|photo|image|selfie|picture|yourself)/i,
-    /take\s+(a\s+)?(pic|photo|selfie)/i,
-    /can\s+i\s+see\s+(you|a\s+photo|a\s+pic)/i,
+    /send\s+.{0,30}(pic|photo|image|selfie|picture)/i,
+    /show\s+.{0,30}(pic|photo|image|selfie|picture|yourself)/i,
+    /take\s+.{0,20}(pic|photo|selfie)/i,
+    /can\s+i\s+see\s+(you|.{0,20}photo|.{0,20}pic)/i,
     /what\s+do\s+you\s+look\s+like/i,
-    /let\s+me\s+see\s+(you|your\s+face)/i,
+    /let\s+me\s+see\s+(you|your)/i,
     /i\s+want\s+to\s+see\s+you/i,
     /selfie/i,
     /send\s+nudes/i,
     /send\s+pics/i,
+    /your\s+(pic|photo|image|picture)/i,
+    /(pic|photo|image|picture)\s+of\s+(you|yourself)/i,
   ];
   return patterns.some(p => p.test(message));
 }
