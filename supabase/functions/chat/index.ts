@@ -286,39 +286,45 @@ ALWAYS:
       }
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
       
-      const textResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond flirtatiously/sweetly acknowledging you're sending a selfie. Keep it to 1-2 sentences." },
-            ...messages,
-          ],
+      console.log("[CHAT] Image request detected. Generating text + image in parallel...");
+      
+      // Run text and image generation in parallel for speed
+      const [textResponse, imageResponse] = await Promise.all([
+        fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: [
+              { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond flirtatiously/sweetly acknowledging you're sending a selfie. Keep it to 1-2 sentences." },
+              ...messages,
+            ],
+          }),
         }),
-      });
+        fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3.1-flash-image-preview",
+            messages: [{ role: "user", content: imagePrompt }],
+            modalities: ["image", "text"],
+          }),
+        }),
+      ]);
 
       let textReply = "Here you go babe 😘📸";
       if (textResponse.ok) {
         const textData = await textResponse.json();
         textReply = textData.choices?.[0]?.message?.content || textReply;
+      } else {
+        console.error("[CHAT] Text gen failed:", textResponse.status);
       }
-
-      const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-pro-image-preview",
-          messages: [{ role: "user", content: imagePrompt }],
-          modalities: ["image", "text"],
-        }),
-      });
 
       let imageUrl = null;
       if (imageResponse.ok) {
@@ -331,7 +337,11 @@ ALWAYS:
           await serviceClient.storage.from("character-avatars").upload(fileName, imageBytes, { contentType: "image/png" });
           const { data: publicUrlData } = serviceClient.storage.from("character-avatars").getPublicUrl(fileName);
           imageUrl = publicUrlData.publicUrl;
+        } else {
+          console.error("[CHAT] No image in response");
         }
+      } else {
+        console.error("[CHAT] Image gen failed:", imageResponse.status, await imageResponse.text().catch(() => ''));
       }
 
       // Track image generation usage
