@@ -334,7 +334,26 @@ ALWAYS:
         }
       }
 
-      // Increment usage
+      // Track image generation usage
+      if (imageUrl) {
+        await serviceClient.from("gem_transactions").insert({
+          user_id: userId,
+          amount: tier === "free" ? -2 : 0,
+          type: "image_gen",
+          description: "In-chat image generation",
+        });
+        // Deduct diamonds for free users
+        if (tier === "free") {
+          const { data: wallet } = await serviceClient
+            .from("gem_wallets").select("balance").eq("user_id", userId).single();
+          if (wallet) {
+            await serviceClient.from("gem_wallets")
+              .update({ balance: Math.max(0, wallet.balance - 2) }).eq("user_id", userId);
+          }
+        }
+      }
+
+      // Increment chat usage
       if (tier === "free") {
         await serviceClient.from("subscriptions").update({
           free_messages_used: (sub?.free_messages_used || 0) + 1,
