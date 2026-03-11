@@ -125,7 +125,7 @@ export default function CreateCharacter() {
   // Build a detailed physical description for image generation consistency
   const detailedDescription = useMemo(() => {
     const s = selections;
-    return `${s.ageRange} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
+    return `${s.age} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
   }, [selections]);
 
   const handleSave = async () => {
