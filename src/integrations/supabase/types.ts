@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          user_email?: string
+          user_id: string
+          user_name?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          user_email?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
+      admin_logs: {
+        Row: {
+          action: string
+          admin_email: string
+          admin_id: string
+          created_at: string
+          details: string | null
+          id: string
+          target_user_email: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_email?: string
+          admin_id: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          target_user_email?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_email?: string
+          admin_id?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          target_user_email?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       chatters: {
         Row: {
           active_conversations: number
@@ -244,6 +307,7 @@ export type Database = {
           interests: string[] | null
           nickname: string | null
           onboarding_completed: boolean
+          status: string
           updated_at: string
           user_id: string
         }
@@ -256,6 +320,7 @@ export type Database = {
           interests?: string[] | null
           nickname?: string | null
           onboarding_completed?: boolean
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -268,6 +333,7 @@ export type Database = {
           interests?: string[] | null
           nickname?: string | null
           onboarding_completed?: boolean
+          status?: string
           updated_at?: string
           user_id?: string
         }
