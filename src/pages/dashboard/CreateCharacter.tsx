@@ -79,6 +79,7 @@ export default function CreateCharacter() {
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedCharacterId, setSavedCharacterId] = useState<string | null>(null);
 
   const positivePrompt = useMemo(() => buildPositivePrompt(selections), [selections]);
   const negativePrompt = getNegativePrompt();
