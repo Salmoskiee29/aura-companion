@@ -201,15 +201,7 @@ export type Database = {
           model_id?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_model_id_fkey"
-            columns: ["model_id"]
-            isOneToOne: false
-            referencedRelation: "companion_models"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       gem_transactions: {
         Row: {
