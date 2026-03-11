@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Loader2, ImagePlus, Shuffle, RotateCcw, ChevronDown } from 'lucide-react';
+import { Sparkles, Loader2, ImagePlus, Shuffle, RotateCcw, ChevronDown, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +79,7 @@ export default function CreateCharacter() {
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedCharacterId, setSavedCharacterId] = useState<string | null>(null);
 
   const positivePrompt = useMemo(() => buildPositivePrompt(selections), [selections]);
   const negativePrompt = getNegativePrompt();
@@ -121,6 +122,12 @@ export default function CreateCharacter() {
     }
   };
 
+  // Build a detailed physical description for image generation consistency
+  const detailedDescription = useMemo(() => {
+    const s = selections;
+    return `${s.ageRange} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
+  }, [selections]);
+
   const handleSave = async () => {
     if (!user || !name.trim()) {
       toast.error('Please enter a character name.');
@@ -130,20 +137,20 @@ export default function CreateCharacter() {
     setIsSaving(true);
     try {
       const personalityPrompt = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.sweet;
-      const fullPrompt = `${personalityPrompt}\n\nYour name is ${name.trim()}. Your appearance: ${characterDescription}. Always stay in character and respond as if you are a real person.`;
+      const fullPrompt = `${personalityPrompt}\n\nYour name is ${name.trim()}. Your appearance: ${detailedDescription}. Always stay in character and respond as if you are a real person.`;
 
-      const { error } = await supabase.from('user_characters').insert({
+      const { data, error } = await supabase.from('user_characters').insert({
         user_id: user.id,
         name: name.trim(),
-        description: characterDescription,
+        description: detailedDescription,
         personality_prompt: fullPrompt,
         tone: personality,
         avatar_url: selectedImage || null,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+      setSavedCharacterId(data.id);
       toast.success('Character saved! 🎉');
-      navigate('/dashboard/my-characters');
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error(err.message || 'Failed to save character');
@@ -285,18 +292,45 @@ export default function CreateCharacter() {
           )}
         </div>
 
-        {/* Save */}
-        <Button
-          onClick={handleSave}
-          disabled={isSaving || !name.trim()}
-          className="w-full btn-premium text-primary-foreground py-6 text-base"
-        >
-          {isSaving ? (
-            <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Character...</>
-          ) : (
-            <><Sparkles className="mr-2 h-5 w-5" /> Save Character</>
-          )}
-        </Button>
+        {/* Save / Post-Save Actions */}
+        {savedCharacterId ? (
+          <div className="bg-card border border-primary/30 rounded-2xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-display font-bold text-foreground">
+              {name.trim()} is ready! 🎉
+            </h3>
+            <p className="text-sm text-muted-foreground">Your AI companion has been created. Start chatting now or view all your characters.</p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate(`/chat/user-${savedCharacterId}`)}
+                className="flex-1 btn-premium text-primary-foreground py-5 text-base"
+              >
+                <MessageCircle className="mr-2 h-5 w-5" /> Start Chat
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/dashboard/my-characters')}
+                className="flex-1 border-border text-foreground py-5"
+              >
+                My Characters
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !name.trim()}
+            className="w-full btn-premium text-primary-foreground py-6 text-base"
+          >
+            {isSaving ? (
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Character...</>
+            ) : (
+              <><Sparkles className="mr-2 h-5 w-5" /> Save Character</>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
