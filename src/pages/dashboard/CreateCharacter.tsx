@@ -150,7 +150,8 @@ export default function CreateCharacter() {
         personality_prompt: fullPrompt,
         tone: personality,
         avatar_url: selectedImage || null,
-      }).select('id').single();
+        age: selections.age,
+      } as any).select('id').single();
 
       if (error) throw error;
       setSavedCharacterId(data.id);
