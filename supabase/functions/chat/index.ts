@@ -48,7 +48,20 @@ function detectImageRequest(message: string): boolean {
   return patterns.some(p => p.test(message));
 }
 
-function buildImagePromptFromDescription(description: string, mood: string): string {
+function extractImageStyle(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("bikini")) return "wearing a bikini at the beach, summer vibes";
+  if (lower.includes("casual")) return "in casual everyday clothes, relaxed setting";
+  if (lower.includes("dress")) return "wearing an elegant dress, sophisticated setting";
+  if (lower.includes("workout") || lower.includes("gym")) return "in athletic workout clothes, at the gym";
+  if (lower.includes("pajama") || lower.includes("bed")) return "in cozy pajamas, bedroom setting";
+  if (lower.includes("pool") || lower.includes("swim")) return "by the pool in swimwear, sunny day";
+  if (lower.includes("selfie")) return "taking a smartphone selfie, casual close-up";
+  if (lower.includes("lingerie")) return "in elegant lingerie, intimate boudoir setting";
+  return "taking a smartphone selfie, casual close-up";
+}
+
+function buildImagePromptFromDescription(description: string, mood: string, userRequestStyle: string): string {
   const moodToExpression: Record<string, string> = {
     flirty: 'flirtatious playful expression, slight head tilt, bedroom eyes',
     sweet: 'warm genuine smile, soft gentle expression, kind eyes',
@@ -58,7 +71,7 @@ function buildImagePromptFromDescription(description: string, mood: string): str
     playful: 'bright fun smile, energetic pose, sparkling eyes',
   };
   const expression = moodToExpression[mood] || 'natural relaxed expression';
-  return `A real smartphone selfie photograph of ${description}. ${expression}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. NOT AI generated, NOT cartoon, NOT illustration.`;
+  return `Generate a new photo of this EXACT same person from the reference image. ${userRequestStyle}. ${expression}. The person is ${description}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. CRITICAL: The generated person must have the EXACT same face, facial structure, hair color, hair style, skin tone, eye color, and body type as shown in the reference image. NOT AI generated, NOT cartoon, NOT illustration.`;
 }
 
 /** Check and reset daily counters if 24h have passed. Returns updated sub record. */
@@ -179,6 +192,7 @@ serve(async (req) => {
     let systemPrompt = "You are a friendly, engaging AI companion. Be warm, flirty, and conversational. Keep responses concise (2-3 sentences). Use occasional emojis.";
     let characterDescription = "";
     let characterMood = "sweet";
+    let characterAvatarUrl = "";
 
     if (modelId) {
       const isUserCharacter = modelId.startsWith("user-");
@@ -187,12 +201,13 @@ serve(async (req) => {
       if (isUserCharacter) {
         const { data: character } = await serviceClient
           .from("user_characters")
-          .select("name, personality_prompt, description, tone")
+          .select("name, personality_prompt, description, tone, avatar_url")
           .eq("id", actualId).single();
         
         if (character) {
           characterDescription = character.description || "";
           characterMood = character.tone || "sweet";
+          characterAvatarUrl = character.avatar_url || "";
           if (character.personality_prompt) {
             systemPrompt = character.personality_prompt;
           } else {
@@ -214,8 +229,8 @@ serve(async (req) => {
           else if (traits.toLowerCase().includes("playful")) characterMood = "playful";
           else characterMood = "sweet";
 
-          // Build character description for image generation
           characterDescription = `a ${model.age}-year-old ${model.nationality || ''} woman named ${model.name}. ${model.personality || ''}. Traits: ${traits}. Occupation: ${model.occupation || ''}`;
+          characterAvatarUrl = model.avatar || "";
 
           if (model.system_prompt) {
             systemPrompt = model.system_prompt;
@@ -284,10 +299,21 @@ ALWAYS:
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
+      const userRequestStyle = extractImageStyle(lastUserMessage);
+      const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood, userRequestStyle);
       
-      console.log("[CHAT] Image request detected. Generating text + image in parallel...");
+      console.log("[CHAT] Image request detected. Avatar URL:", characterAvatarUrl ? "present" : "missing");
+      console.log("[CHAT] Image style:", userRequestStyle);
+      console.log("[CHAT] Generating text + image in parallel...");
       
+      // Build image message content - use avatar as face reference if available
+      const imageMessageContent = characterAvatarUrl
+        ? [
+            { type: "text", text: imagePrompt },
+            { type: "image_url", image_url: { url: characterAvatarUrl } },
+          ]
+        : imagePrompt;
+
       // Run text and image generation in parallel for speed
       const [textResponse, imageResponse] = await Promise.all([
         fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -299,7 +325,7 @@ ALWAYS:
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
             messages: [
-              { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond flirtatiously/sweetly acknowledging you're sending a selfie. Keep it to 1-2 sentences." },
+              { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond naturally acknowledging you're sending a photo. Keep it to 1-2 sentences. Be simple and natural." },
               ...messages,
             ],
           }),
@@ -312,7 +338,7 @@ ALWAYS:
           },
           body: JSON.stringify({
             model: "google/gemini-3.1-flash-image-preview",
-            messages: [{ role: "user", content: imagePrompt }],
+            messages: [{ role: "user", content: imageMessageContent }],
             modalities: ["image", "text"],
           }),
         }),
