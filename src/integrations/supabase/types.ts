@@ -384,6 +384,7 @@ export type Database = {
       }
       user_characters: {
         Row: {
+          age: number | null
           avatar_url: string | null
           created_at: string
           description: string
@@ -396,6 +397,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          age?: number | null
           avatar_url?: string | null
           created_at?: string
           description?: string
@@ -408,6 +410,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          age?: number | null
           avatar_url?: string | null
           created_at?: string
           description?: string

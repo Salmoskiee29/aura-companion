@@ -1,0 +1,1 @@
+ALTER TABLE public.user_characters ADD COLUMN IF NOT EXISTS age integer;
