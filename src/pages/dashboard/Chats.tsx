@@ -38,12 +38,16 @@ export default function DashboardChats() {
       }
 
       const modelIds = [...new Set(convs.map(c => c.model_id))];
-      const { data: models } = await supabase
-        .from('companion_models')
-        .select('id, name, avatar, online')
-        .in('id', modelIds);
+      
+      // Fetch both companion models and user characters in parallel
+      const [modelsRes, charsRes] = await Promise.all([
+        supabase.from('companion_models').select('id, name, avatar, online').in('id', modelIds),
+        supabase.from('user_characters').select('id, name, avatar_url').in('id', modelIds),
+      ]);
 
-      const modelMap = new Map(models?.map(m => [m.id, m]) || []);
+      const modelMap = new Map<string, { name: string; avatar: string; online: boolean; isUserChar: boolean }>();
+      modelsRes.data?.forEach(m => modelMap.set(m.id, { name: m.name, avatar: m.avatar, online: m.online, isUserChar: false }));
+      charsRes.data?.forEach(c => modelMap.set(c.id, { name: c.name, avatar: c.avatar_url || '', online: true, isUserChar: true }));
 
       // Get last message for each conversation
       const chatItems: ChatItem[] = [];
@@ -57,11 +61,11 @@ export default function DashboardChats() {
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         chatItems.push({
           conversationId: conv.id,
-          modelId: conv.model_id,
+          modelId: model.isUserChar ? `user-${conv.model_id}` : conv.model_id,
           modelName: model.name,
           modelAvatar: model.avatar,
           modelOnline: model.online,
