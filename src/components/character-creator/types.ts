@@ -1,7 +1,7 @@
 export interface CharacterSelections {
   // Appearance
   gender: string;
-  ageRange: string;
+  age: number;
   ethnicity: string;
   skinTone: string;
   faceShape: string;
