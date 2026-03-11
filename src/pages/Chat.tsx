@@ -157,12 +157,18 @@ const Chat = () => {
           .order('created_at', { ascending: true });
 
         if (msgs && msgs.length > 0) {
-          setMessages(msgs.map(msg => ({
-            id: msg.id,
-            sender: msg.sender_type === 'user' ? 'user' : 'model',
-            text: msg.message,
-            time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          })));
+          setMessages(msgs.map(msg => {
+            const imageMatch = msg.message.match(/\[Image:\s*(https?:\/\/[^\]]+)\]/);
+            const imageUrl = imageMatch ? imageMatch[1] : undefined;
+            const text = imageMatch ? msg.message.replace(/\n?\[Image:\s*https?:\/\/[^\]]+\]/, '').trim() : msg.message;
+            return {
+              id: msg.id,
+              sender: (msg.sender_type === 'user' ? 'user' : 'model') as 'user' | 'model',
+              text,
+              time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              imageUrl,
+            };
+          }));
         } else if (charInfo) {
           setMessages([{
             id: '0',
@@ -446,12 +452,14 @@ const Chat = () => {
                   ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
                   : 'glass-card text-card-foreground rounded-2xl rounded-bl-md'
               } px-4 py-3`}>
-                <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 {msg.imageUrl && (
-                  <div className="mt-2 rounded-xl overflow-hidden">
-                    <img src={msg.imageUrl} alt="Sent photo" className="w-full max-w-[280px] rounded-xl object-cover" />
+                  <div className="rounded-xl overflow-hidden mb-2">
+                    <a href={msg.imageUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={msg.imageUrl} alt="Sent photo" className="w-full max-w-[300px] rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" loading="lazy" />
+                    </a>
                   </div>
                 )}
+                {msg.text && <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
                 <p className={`text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
                   {msg.pending ? 'Sending...' : msg.time}
                 </p>
