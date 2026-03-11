@@ -299,10 +299,21 @@ ALWAYS:
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
+      const userRequestStyle = extractImageStyle(lastUserMessage);
+      const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood, userRequestStyle);
       
-      console.log("[CHAT] Image request detected. Generating text + image in parallel...");
+      console.log("[CHAT] Image request detected. Avatar URL:", characterAvatarUrl ? "present" : "missing");
+      console.log("[CHAT] Image style:", userRequestStyle);
+      console.log("[CHAT] Generating text + image in parallel...");
       
+      // Build image message content - use avatar as face reference if available
+      const imageMessageContent = characterAvatarUrl
+        ? [
+            { type: "text", text: imagePrompt },
+            { type: "image_url", image_url: { url: characterAvatarUrl } },
+          ]
+        : imagePrompt;
+
       // Run text and image generation in parallel for speed
       const [textResponse, imageResponse] = await Promise.all([
         fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -314,7 +325,7 @@ ALWAYS:
           body: JSON.stringify({
             model: "google/gemini-3-flash-preview",
             messages: [
-              { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond flirtatiously/sweetly acknowledging you're sending a selfie. Keep it to 1-2 sentences." },
+              { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond naturally acknowledging you're sending a photo. Keep it to 1-2 sentences. Be simple and natural." },
               ...messages,
             ],
           }),
@@ -327,7 +338,7 @@ ALWAYS:
           },
           body: JSON.stringify({
             model: "google/gemini-3.1-flash-image-preview",
-            messages: [{ role: "user", content: imagePrompt }],
+            messages: [{ role: "user", content: imageMessageContent }],
             modalities: ["image", "text"],
           }),
         }),
