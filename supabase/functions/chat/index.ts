@@ -48,7 +48,20 @@ function detectImageRequest(message: string): boolean {
   return patterns.some(p => p.test(message));
 }
 
-function buildImagePromptFromDescription(description: string, mood: string): string {
+function extractImageStyle(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes("bikini")) return "wearing a bikini at the beach, summer vibes";
+  if (lower.includes("casual")) return "in casual everyday clothes, relaxed setting";
+  if (lower.includes("dress")) return "wearing an elegant dress, sophisticated setting";
+  if (lower.includes("workout") || lower.includes("gym")) return "in athletic workout clothes, at the gym";
+  if (lower.includes("pajama") || lower.includes("bed")) return "in cozy pajamas, bedroom setting";
+  if (lower.includes("pool") || lower.includes("swim")) return "by the pool in swimwear, sunny day";
+  if (lower.includes("selfie")) return "taking a smartphone selfie, casual close-up";
+  if (lower.includes("lingerie")) return "in elegant lingerie, intimate boudoir setting";
+  return "taking a smartphone selfie, casual close-up";
+}
+
+function buildImagePromptFromDescription(description: string, mood: string, userRequestStyle: string): string {
   const moodToExpression: Record<string, string> = {
     flirty: 'flirtatious playful expression, slight head tilt, bedroom eyes',
     sweet: 'warm genuine smile, soft gentle expression, kind eyes',
@@ -58,7 +71,7 @@ function buildImagePromptFromDescription(description: string, mood: string): str
     playful: 'bright fun smile, energetic pose, sparkling eyes',
   };
   const expression = moodToExpression[mood] || 'natural relaxed expression';
-  return `A real smartphone selfie photograph of ${description}. ${expression}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. NOT AI generated, NOT cartoon, NOT illustration.`;
+  return `Generate a new photo of this EXACT same person from the reference image. ${userRequestStyle}. ${expression}. The person is ${description}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. CRITICAL: The generated person must have the EXACT same face, facial structure, hair color, hair style, skin tone, eye color, and body type as shown in the reference image. NOT AI generated, NOT cartoon, NOT illustration.`;
 }
 
 /** Check and reset daily counters if 24h have passed. Returns updated sub record. */
