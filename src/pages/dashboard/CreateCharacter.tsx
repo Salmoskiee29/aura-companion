@@ -133,6 +133,10 @@ export default function CreateCharacter() {
       toast.error('Please enter a character name.');
       return;
     }
+    if (selections.age < 18 || selections.age > 60) {
+      toast.error('Please enter an age between 18 and 60.');
+      return;
+    }
 
     setIsSaving(true);
     try {
