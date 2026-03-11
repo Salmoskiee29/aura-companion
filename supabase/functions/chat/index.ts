@@ -196,7 +196,7 @@ serve(async (req) => {
       } else {
         const { data: model } = await supabase
           .from("companion_models")
-          .select("system_prompt, name, personality, traits")
+          .select("system_prompt, name, personality, traits, nationality, age, occupation, avatar")
           .eq("id", actualId).single();
         
         if (model) {
@@ -206,6 +206,9 @@ serve(async (req) => {
           else if (traits.toLowerCase().includes("bold") || traits.toLowerCase().includes("confident")) characterMood = "dominant";
           else if (traits.toLowerCase().includes("playful")) characterMood = "playful";
           else characterMood = "sweet";
+
+          // Build character description for image generation
+          characterDescription = `a ${model.age}-year-old ${model.nationality || ''} woman named ${model.name}. ${model.personality || ''}. Traits: ${traits}. Occupation: ${model.occupation || ''}`;
 
           if (model.system_prompt) {
             systemPrompt = model.system_prompt;
