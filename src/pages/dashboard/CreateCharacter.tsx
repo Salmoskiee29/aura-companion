@@ -188,6 +188,24 @@ export default function CreateCharacter() {
             />
           </div>
           <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Character Age *</label>
+            <input
+              type="number"
+              min={18}
+              max={60}
+              value={selections.age}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 18;
+                handleChange('age', Math.min(60, Math.max(18, val)));
+              }}
+              placeholder="e.g. 22"
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {(selections.age < 18 || selections.age > 60) && (
+              <p className="text-xs text-destructive mt-1">Please enter an age between 18 and 60.</p>
+            )}
+          </div>
+          <div>
             <label className="text-xs font-medium text-muted-foreground mb-3 block uppercase tracking-wide">Personality Type *</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {personalityOptions.map((p) => (
