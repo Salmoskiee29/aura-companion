@@ -40,7 +40,7 @@ function randomize(): CharacterSelections {
 
   return {
     gender: pickField('appearance', 'gender'),
-    ageRange: pickField('appearance', 'ageRange'),
+    age: Math.floor(Math.random() * 43) + 18,
     ethnicity: pickField('appearance', 'ethnicity'),
     skinTone: pickField('appearance', 'skinTone'),
     faceShape: pickField('appearance', 'faceShape'),
@@ -125,12 +125,16 @@ export default function CreateCharacter() {
   // Build a detailed physical description for image generation consistency
   const detailedDescription = useMemo(() => {
     const s = selections;
-    return `${s.ageRange} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
+    return `${s.age} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
   }, [selections]);
 
   const handleSave = async () => {
     if (!user || !name.trim()) {
       toast.error('Please enter a character name.');
+      return;
+    }
+    if (selections.age < 18 || selections.age > 60) {
+      toast.error('Please enter an age between 18 and 60.');
       return;
     }
 
@@ -146,7 +150,8 @@ export default function CreateCharacter() {
         personality_prompt: fullPrompt,
         tone: personality,
         avatar_url: selectedImage || null,
-      }).select('id').single();
+        age: selections.age,
+      } as any).select('id').single();
 
       if (error) throw error;
       setSavedCharacterId(data.id);
@@ -181,6 +186,24 @@ export default function CreateCharacter() {
               placeholder="e.g. Luna, Alex, Mika..."
               className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block uppercase tracking-wide">Character Age *</label>
+            <input
+              type="number"
+              min={18}
+              max={60}
+              value={selections.age}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 18;
+                handleChange('age', Math.min(60, Math.max(18, val)));
+              }}
+              placeholder="e.g. 22"
+              className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+            {(selections.age < 18 || selections.age > 60) && (
+              <p className="text-xs text-destructive mt-1">Please enter an age between 18 and 60.</p>
+            )}
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-3 block uppercase tracking-wide">Personality Type *</label>

@@ -7,7 +7,6 @@ export const categories: OptionCategory[] = [
     icon: '👩',
     options: [
       { key: 'gender', label: 'Gender', type: 'select', choices: ['Male', 'Female'] },
-      { key: 'ageRange', label: 'Age Range', type: 'select', choices: ['18–25', '26–35', '36–45'] },
       { key: 'ethnicity', label: 'Ethnicity', type: 'select', choices: ['Asian', 'Caucasian', 'Latina', 'African', 'Middle Eastern', 'Mixed'] },
       { key: 'skinTone', label: 'Skin Tone', type: 'select', choices: ['Fair', 'Light', 'Medium', 'Tan', 'Deep'] },
       { key: 'faceShape', label: 'Face Shape', type: 'select', choices: ['Oval', 'Round', 'Heart', 'Square', 'Diamond'] },
@@ -84,7 +83,7 @@ export const categories: OptionCategory[] = [
     label: 'Camera',
     icon: '📷',
     options: [
-      { key: 'shotType', label: 'Shot Type', type: 'select', choices: ['Close-up', 'Half body', 'Full body'] },
+      { key: 'shotType', label: 'Shot Type', type: 'select', choices: ['Half body', 'Upper body', 'Full body'] },
       { key: 'angle', label: 'Angle', type: 'select', choices: ['Eye level', 'High angle', 'Low angle', 'Selfie angle'] },
       { key: 'lens', label: 'Lens', type: 'select', choices: ['35mm', '50mm', '85mm', '135mm'] },
     ],

@@ -1,7 +1,7 @@
 export interface CharacterSelections {
   // Appearance
   gender: string;
-  ageRange: string;
+  age: number;
   ethnicity: string;
   skinTone: string;
   faceShape: string;
@@ -39,7 +39,7 @@ export interface CharacterSelections {
 
 export const defaultSelections: CharacterSelections = {
   gender: 'Female',
-  ageRange: '18–25',
+  age: 22,
   ethnicity: 'Caucasian',
   skinTone: 'Light',
   faceShape: 'Oval',
@@ -76,6 +76,6 @@ export interface OptionCategory {
 export interface OptionField {
   key: keyof CharacterSelections;
   label: string;
-  type: 'select' | 'multi-select' | 'color';
+  type: 'select' | 'multi-select' | 'color' | 'number';
   choices?: string[];
 }
