@@ -157,12 +157,18 @@ const Chat = () => {
           .order('created_at', { ascending: true });
 
         if (msgs && msgs.length > 0) {
-          setMessages(msgs.map(msg => ({
-            id: msg.id,
-            sender: msg.sender_type === 'user' ? 'user' : 'model',
-            text: msg.message,
-            time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          })));
+          setMessages(msgs.map(msg => {
+            const imageMatch = msg.message.match(/\[Image:\s*(https?:\/\/[^\]]+)\]/);
+            const imageUrl = imageMatch ? imageMatch[1] : undefined;
+            const text = imageMatch ? msg.message.replace(/\n?\[Image:\s*https?:\/\/[^\]]+\]/, '').trim() : msg.message;
+            return {
+              id: msg.id,
+              sender: (msg.sender_type === 'user' ? 'user' : 'model') as 'user' | 'model',
+              text,
+              time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              imageUrl,
+            };
+          }));
         } else if (charInfo) {
           setMessages([{
             id: '0',
