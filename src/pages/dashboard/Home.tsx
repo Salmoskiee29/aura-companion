@@ -63,23 +63,32 @@ export default function DashboardHome() {
         .select('model_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(6);
 
       if (convs && convs.length > 0) {
         const modelIds = [...new Set(convs.map(c => c.model_id))];
-        const { data: models } = await supabase
-          .from('companion_models')
-          .select('id, name, avatar, online')
-          .in('id', modelIds);
+        
+        // Fetch both companion models and user characters in parallel
+        const [modelsRes, charsRes] = await Promise.all([
+          supabase.from('companion_models').select('id, name, avatar, online').in('id', modelIds),
+          supabase.from('user_characters').select('id, name, avatar_url').in('id', modelIds),
+        ]);
 
-        if (models) {
-          const modelMap = new Map(models.map(m => [m.id, m]));
-          setRecentChats(convs
-            .map(c => modelMap.get(c.model_id))
-            .filter(Boolean)
-            .map(m => ({ modelId: m!.id, modelName: m!.name, modelAvatar: m!.avatar, online: m!.online }))
-          );
-        }
+        const chatMap = new Map<string, RecentChat>();
+        
+        modelsRes.data?.forEach(m => {
+          chatMap.set(m.id, { modelId: m.id, modelName: m.name, modelAvatar: m.avatar, online: m.online });
+        });
+        
+        charsRes.data?.forEach(c => {
+          chatMap.set(c.id, { modelId: `user-${c.id}`, modelName: c.name, modelAvatar: c.avatar_url || '', online: true });
+        });
+
+        const recent = modelIds
+          .map(id => chatMap.get(id))
+          .filter(Boolean) as RecentChat[];
+        
+        setRecentChats(recent.slice(0, 3));
       }
       setLoadingRecent(false);
     };
