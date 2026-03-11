@@ -179,6 +179,7 @@ serve(async (req) => {
     let systemPrompt = "You are a friendly, engaging AI companion. Be warm, flirty, and conversational. Keep responses concise (2-3 sentences). Use occasional emojis.";
     let characterDescription = "";
     let characterMood = "sweet";
+    let characterAvatarUrl = "";
 
     if (modelId) {
       const isUserCharacter = modelId.startsWith("user-");
@@ -187,12 +188,13 @@ serve(async (req) => {
       if (isUserCharacter) {
         const { data: character } = await serviceClient
           .from("user_characters")
-          .select("name, personality_prompt, description, tone")
+          .select("name, personality_prompt, description, tone, avatar_url")
           .eq("id", actualId).single();
         
         if (character) {
           characterDescription = character.description || "";
           characterMood = character.tone || "sweet";
+          characterAvatarUrl = character.avatar_url || "";
           if (character.personality_prompt) {
             systemPrompt = character.personality_prompt;
           } else {
@@ -214,8 +216,8 @@ serve(async (req) => {
           else if (traits.toLowerCase().includes("playful")) characterMood = "playful";
           else characterMood = "sweet";
 
-          // Build character description for image generation
           characterDescription = `a ${model.age}-year-old ${model.nationality || ''} woman named ${model.name}. ${model.personality || ''}. Traits: ${traits}. Occupation: ${model.occupation || ''}`;
+          characterAvatarUrl = model.avatar || "";
 
           if (model.system_prompt) {
             systemPrompt = model.system_prompt;
