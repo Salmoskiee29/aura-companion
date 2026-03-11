@@ -39,7 +39,7 @@ export interface CharacterSelections {
 
 export const defaultSelections: CharacterSelections = {
   gender: 'Female',
-  ageRange: '18–25',
+  age: 22,
   ethnicity: 'Caucasian',
   skinTone: 'Light',
   faceShape: 'Oval',
