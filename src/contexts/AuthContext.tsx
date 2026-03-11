@@ -129,6 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]);
       const authUser = buildAuthUser(data.user, role, onboardingCompleted);
       setUser(authUser);
+      // Log activity (fire-and-forget)
+      supabase.from('activity_logs').insert({
+        user_id: data.user.id,
+        user_email: data.user.email || '',
+        user_name: authUser.displayName,
+        action: 'User logged in',
+      }).then(() => {});
       return authUser;
     } finally {
       isLoggingIn.current = false;
