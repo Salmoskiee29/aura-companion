@@ -292,18 +292,45 @@ export default function CreateCharacter() {
           )}
         </div>
 
-        {/* Save */}
-        <Button
-          onClick={handleSave}
-          disabled={isSaving || !name.trim()}
-          className="w-full btn-premium text-primary-foreground py-6 text-base"
-        >
-          {isSaving ? (
-            <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Character...</>
-          ) : (
-            <><Sparkles className="mr-2 h-5 w-5" /> Save Character</>
-          )}
-        </Button>
+        {/* Save / Post-Save Actions */}
+        {savedCharacterId ? (
+          <div className="bg-card border border-primary/30 rounded-2xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-display font-bold text-foreground">
+              {name.trim()} is ready! 🎉
+            </h3>
+            <p className="text-sm text-muted-foreground">Your AI companion has been created. Start chatting now or view all your characters.</p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate(`/chat/user-${savedCharacterId}`)}
+                className="flex-1 btn-premium text-primary-foreground py-5 text-base"
+              >
+                <MessageCircle className="mr-2 h-5 w-5" /> Start Chat
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/dashboard/my-characters')}
+                className="flex-1 border-border text-foreground py-5"
+              >
+                My Characters
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !name.trim()}
+            className="w-full btn-premium text-primary-foreground py-6 text-base"
+          >
+            {isSaving ? (
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Saving Character...</>
+            ) : (
+              <><Sparkles className="mr-2 h-5 w-5" /> Save Character</>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
