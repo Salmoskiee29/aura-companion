@@ -40,7 +40,7 @@ function randomize(): CharacterSelections {
 
   return {
     gender: pickField('appearance', 'gender'),
-    ageRange: pickField('appearance', 'ageRange'),
+    age: Math.floor(Math.random() * 43) + 18,
     ethnicity: pickField('appearance', 'ethnicity'),
     skinTone: pickField('appearance', 'skinTone'),
     faceShape: pickField('appearance', 'faceShape'),
