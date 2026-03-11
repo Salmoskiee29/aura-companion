@@ -16,6 +16,13 @@ const TIER_CHAT_LIMITS: Record<string, number> = {
   vip: 999,
 };
 
+const TIER_IMAGE_LIMITS: Record<string, number> = {
+  free: 3,
+  basic: 10,
+  premium: 30,
+  vip: 999,
+};
+
 const PERSONALITY_SYSTEM_PROMPTS: Record<string, string> = {
   sweet: `You are a sweet, caring girlfriend. Be warm, affectionate, and emotionally supportive. Use pet names naturally. Express genuine care through gentle words and emojis like 💕🥰😘.`,
   flirty: `You are a flirty, playful girlfriend. Love teasing and being seductive in a fun way. Use playful language and emojis like 😏😘😈. Be confident and make them feel desired.`,
@@ -196,7 +203,7 @@ serve(async (req) => {
       } else {
         const { data: model } = await supabase
           .from("companion_models")
-          .select("system_prompt, name, personality, traits")
+          .select("system_prompt, name, personality, traits, nationality, age, occupation, avatar")
           .eq("id", actualId).single();
         
         if (model) {
@@ -206,6 +213,9 @@ serve(async (req) => {
           else if (traits.toLowerCase().includes("bold") || traits.toLowerCase().includes("confident")) characterMood = "dominant";
           else if (traits.toLowerCase().includes("playful")) characterMood = "playful";
           else characterMood = "sweet";
+
+          // Build character description for image generation
+          characterDescription = `a ${model.age}-year-old ${model.nationality || ''} woman named ${model.name}. ${model.personality || ''}. Traits: ${traits}. Occupation: ${model.occupation || ''}`;
 
           if (model.system_prompt) {
             systemPrompt = model.system_prompt;
@@ -255,6 +265,25 @@ ALWAYS:
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     if (isImageRequest && characterDescription) {
+      // Check image generation daily limit
+      const imageLimit = TIER_IMAGE_LIMITS[tier] || 3;
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { count: todayImageCount } = await serviceClient
+        .from("gem_transactions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("type", "image_gen")
+        .gte("created_at", todayStart.toISOString());
+
+      if ((todayImageCount ?? 0) >= imageLimit) {
+        return new Response(JSON.stringify({
+          reply: `Sorry, you've reached your daily image limit (${imageLimit}). Upgrade your plan for more! 📸`,
+          limit_reached: true,
+        }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood);
       
       const textResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -305,7 +334,26 @@ ALWAYS:
         }
       }
 
-      // Increment usage
+      // Track image generation usage
+      if (imageUrl) {
+        await serviceClient.from("gem_transactions").insert({
+          user_id: userId,
+          amount: tier === "free" ? -2 : 0,
+          type: "image_gen",
+          description: "In-chat image generation",
+        });
+        // Deduct diamonds for free users
+        if (tier === "free") {
+          const { data: wallet } = await serviceClient
+            .from("gem_wallets").select("balance").eq("user_id", userId).single();
+          if (wallet) {
+            await serviceClient.from("gem_wallets")
+              .update({ balance: Math.max(0, wallet.balance - 2) }).eq("user_id", userId);
+          }
+        }
+      }
+
+      // Increment chat usage
       if (tier === "free") {
         await serviceClient.from("subscriptions").update({
           free_messages_used: (sub?.free_messages_used || 0) + 1,
