@@ -32,25 +32,74 @@ const PERSONALITY_SYSTEM_PROMPTS: Record<string, string> = {
   playful: `You are a playful, energetic partner. Love jokes, games, and banter. Be witty and spontaneous. Use emojis like 😜🎉🤪.`,
 };
 
-function detectImageRequest(message: string): boolean {
+async function detectImageRequestWithAI(message: string, apiKey: string): Promise<{ isImageRequest: boolean; style: string }> {
+  // Quick regex pre-check for obvious non-image messages (performance optimization)
+  const quickCheck = /(pic|photo|image|selfie|picture|see you|see me|look like|show.*you|send.*you|nudes|outfit)/i;
+  if (!quickCheck.test(message)) {
+    return { isImageRequest: false, style: "taking a smartphone selfie, casual close-up" };
+  }
+
+  try {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          {
+            role: "system",
+            content: `You are a classifier. Determine if the user is asking an AI companion to send/show a photo or image of themselves. Respond ONLY with valid JSON, no markdown.
+Format: {"is_image_request": true/false, "style": "description of requested image style"}
+If it IS an image request, describe the style (e.g. "selfie close-up", "wearing a bikini at the beach", "casual outfit photo", "mirror selfie", "gym workout clothes"). If no specific style mentioned, use "casual smartphone selfie, natural pose".
+If it is NOT an image request, set style to "".`
+          },
+          { role: "user", content: message }
+        ],
+      }),
+    });
+
+    if (!resp.ok) {
+      console.error("[CHAT] Intent detection failed, falling back to regex:", resp.status);
+      return fallbackRegexDetect(message);
+    }
+
+    const data = await resp.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    // Strip markdown code fences if present
+    const cleaned = content.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      isImageRequest: !!parsed.is_image_request,
+      style: parsed.style || "taking a smartphone selfie, casual close-up",
+    };
+  } catch (e) {
+    console.error("[CHAT] Intent detection error, falling back to regex:", e);
+    return fallbackRegexDetect(message);
+  }
+}
+
+function fallbackRegexDetect(message: string): { isImageRequest: boolean; style: string } {
   const patterns = [
     /send\s+.{0,30}(pic|photo|image|selfie|picture)/i,
     /show\s+.{0,30}(pic|photo|image|selfie|picture|yourself)/i,
     /take\s+.{0,20}(pic|photo|selfie)/i,
     /can\s+i\s+see\s+(you|.{0,20}photo|.{0,20}pic)/i,
     /what\s+do\s+you\s+look\s+like/i,
-    /let\s+me\s+see\s+(you|your)/i,
+    /let\s+me\s+see/i,
     /i\s+want\s+to\s+see\s+you/i,
     /selfie/i,
     /send\s+nudes/i,
-    /send\s+pics/i,
     /your\s+(pic|photo|image|picture)/i,
     /(pic|photo|image|picture)\s+of\s+(you|yourself)/i,
   ];
-  return patterns.some(p => p.test(message));
+  const isImageRequest = patterns.some(p => p.test(message));
+  return { isImageRequest, style: extractImageStyleFromText(message) };
 }
 
-function extractImageStyle(message: string): string {
+function extractImageStyleFromText(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("bikini")) return "wearing a bikini at the beach, summer vibes";
   if (lower.includes("casual")) return "in casual everyday clothes, relaxed setting";
@@ -60,6 +109,8 @@ function extractImageStyle(message: string): string {
   if (lower.includes("pool") || lower.includes("swim")) return "by the pool in swimwear, sunny day";
   if (lower.includes("selfie")) return "taking a smartphone selfie, casual close-up";
   if (lower.includes("lingerie")) return "in elegant lingerie, intimate boudoir setting";
+  if (lower.includes("mirror")) return "mirror selfie, casual outfit";
+  if (lower.includes("outfit")) return "showing off a stylish outfit, full body pose";
   return "taking a smartphone selfie, casual close-up";
 }
 
@@ -276,10 +327,12 @@ ALWAYS:
 - If the user asks for a photo/selfie/picture, respond enthusiastically and say you're sending one.`;
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
-    const isImageRequest = detectImageRequest(lastUserMessage);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Use AI-powered intent detection instead of rigid regex
+    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, LOVABLE_API_KEY);
 
     if (isImageRequest && characterDescription) {
       // Check image generation daily limit
@@ -301,7 +354,7 @@ ALWAYS:
           status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const userRequestStyle = extractImageStyle(lastUserMessage);
+      const userRequestStyle = detectedStyle;
       const imagePrompt = buildImagePromptFromDescription(characterDescription, characterMood, userRequestStyle);
       
       console.log("[CHAT] Image request detected. Avatar URL:", characterAvatarUrl ? "present" : "missing");
