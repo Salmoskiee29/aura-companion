@@ -446,12 +446,14 @@ const Chat = () => {
                   ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
                   : 'glass-card text-card-foreground rounded-2xl rounded-bl-md'
               } px-4 py-3`}>
-                <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 {msg.imageUrl && (
-                  <div className="mt-2 rounded-xl overflow-hidden">
-                    <img src={msg.imageUrl} alt="Sent photo" className="w-full max-w-[280px] rounded-xl object-cover" />
+                  <div className="rounded-xl overflow-hidden mb-2">
+                    <a href={msg.imageUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={msg.imageUrl} alt="Sent photo" className="w-full max-w-[300px] rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity" loading="lazy" />
+                    </a>
                   </div>
                 )}
+                {msg.text && <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>}
                 <p className={`text-[10px] mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/50' : 'text-muted-foreground'}`}>
                   {msg.pending ? 'Sending...' : msg.time}
                 </p>
