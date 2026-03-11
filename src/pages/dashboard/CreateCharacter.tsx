@@ -122,6 +122,12 @@ export default function CreateCharacter() {
     }
   };
 
+  // Build a detailed physical description for image generation consistency
+  const detailedDescription = useMemo(() => {
+    const s = selections;
+    return `${s.ageRange} year old ${s.ethnicity} ${s.gender} with ${s.skinTone} skin, ${s.faceShape} face shape, ${s.eyeColor} eyes, ${s.noseType} nose, ${s.lipsStyle} lips, ${s.hairLength} ${s.hairStyle} ${s.hairColor} hair, ${s.bodyType} body type, ${s.height} height. Clothing: ${s.clothingStyle}. Expression: ${s.facialExpression}. Mood: ${s.mood}.`;
+  }, [selections]);
+
   const handleSave = async () => {
     if (!user || !name.trim()) {
       toast.error('Please enter a character name.');
@@ -131,20 +137,20 @@ export default function CreateCharacter() {
     setIsSaving(true);
     try {
       const personalityPrompt = PERSONALITY_PROMPTS[personality] || PERSONALITY_PROMPTS.sweet;
-      const fullPrompt = `${personalityPrompt}\n\nYour name is ${name.trim()}. Your appearance: ${characterDescription}. Always stay in character and respond as if you are a real person.`;
+      const fullPrompt = `${personalityPrompt}\n\nYour name is ${name.trim()}. Your appearance: ${detailedDescription}. Always stay in character and respond as if you are a real person.`;
 
-      const { error } = await supabase.from('user_characters').insert({
+      const { data, error } = await supabase.from('user_characters').insert({
         user_id: user.id,
         name: name.trim(),
-        description: characterDescription,
+        description: detailedDescription,
         personality_prompt: fullPrompt,
         tone: personality,
         avatar_url: selectedImage || null,
-      });
+      }).select('id').single();
 
       if (error) throw error;
+      setSavedCharacterId(data.id);
       toast.success('Character saved! 🎉');
-      navigate('/dashboard/my-characters');
     } catch (err: any) {
       console.error('Save error:', err);
       toast.error(err.message || 'Failed to save character');
