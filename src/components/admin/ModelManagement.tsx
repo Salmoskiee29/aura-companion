@@ -106,6 +106,7 @@ export const ModelManagement = () => {
       instagram_link: m.instagram_link || '',
       status: m.status || 'active',
       online: m.online,
+      is_featured: (m as any).is_featured || false,
       languages: m.languages || [],
       hobbies: m.hobbies || [],
       relationship_style: m.relationship_style || '',
