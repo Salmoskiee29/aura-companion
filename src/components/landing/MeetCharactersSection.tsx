@@ -1,24 +1,37 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-import amaraImg from '@/assets/models/amara.jpg';
-import emmaImg from '@/assets/models/emma.jpg';
-import isabellaImg from '@/assets/models/isabella.jpg';
-import laylaImg from '@/assets/models/layla.jpg';
-import sophiaImg from '@/assets/models/sophia.jpg';
-import yukiImg from '@/assets/models/yuki.jpg';
-
-const characters = [
-  { name: 'Amara', img: amaraImg, trait: 'Adventurous & Bold' },
-  { name: 'Emma', img: emmaImg, trait: 'Sweet & Caring' },
-  { name: 'Isabella', img: isabellaImg, trait: 'Mysterious & Witty' },
-  { name: 'Layla', img: laylaImg, trait: 'Passionate & Creative' },
-  { name: 'Sophia', img: sophiaImg, trait: 'Elegant & Charming' },
-  { name: 'Yuki', img: yukiImg, trait: 'Playful & Energetic' },
-];
+interface FeaturedModel {
+  id: string;
+  name: string;
+  avatar: string;
+  age: number;
+  personality: string;
+}
 
 export function MeetCharactersSection() {
+  const [models, setModels] = useState<FeaturedModel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      const { data } = await supabase
+        .from('companion_models')
+        .select('id, name, avatar, age, personality')
+        .eq('is_featured', true)
+        .eq('status', 'active');
+      setModels(data || []);
+      setLoading(false);
+    };
+    fetchFeatured();
+  }, []);
+
+  if (loading) return null;
+  if (models.length === 0) return null;
+
   return (
     <section className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -33,10 +46,10 @@ export function MeetCharactersSection() {
           </h2>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-6xl mx-auto">
-          {characters.map((char, i) => (
+        <div className={`grid grid-cols-2 md:grid-cols-3 ${models.length >= 6 ? 'lg:grid-cols-6' : models.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 max-w-6xl mx-auto`}>
+          {models.map((model, i) => (
             <motion.div
-              key={char.name}
+              key={model.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -45,14 +58,14 @@ export function MeetCharactersSection() {
               <Link to="/auth?mode=signup" className="group block">
                 <div className="relative rounded-2xl overflow-hidden aspect-[3/4] border border-border bg-card">
                   <img
-                    src={char.img}
-                    alt={char.name}
+                    src={model.avatar}
+                    alt={model.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3">
-                    <p className="font-semibold text-foreground text-sm">{char.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{char.trait}</p>
+                    <p className="font-semibold text-foreground text-sm">{model.name}</p>
+                    <p className="text-[11px] text-muted-foreground">Age {model.age} · {model.personality}</p>
                   </div>
                 </div>
               </Link>

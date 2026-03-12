@@ -24,6 +24,7 @@ interface ModelRow {
   emoji_usage: string;
   message_length: string;
   system_prompt: string;
+  is_featured: boolean;
 }
 
 const PERSONALITY_TAGS = ['Friendly', 'Shy', 'Romantic', 'Bold', 'Playful', 'Mysterious', 'Confident', 'Sweet', 'Intelligent', 'Funny', 'Calm', 'Flirty', 'Supportive', 'Dominant'];
@@ -49,6 +50,7 @@ const emptyForm = {
   instagram_link: '',
   status: 'active',
   online: false,
+  is_featured: false,
   languages: [] as string[],
   hobbies: [] as string[],
   relationship_style: '',
@@ -104,6 +106,7 @@ export const ModelManagement = () => {
       instagram_link: m.instagram_link || '',
       status: m.status || 'active',
       online: m.online,
+      is_featured: (m as any).is_featured || false,
       languages: m.languages || [],
       hobbies: m.hobbies || [],
       relationship_style: m.relationship_style || '',
@@ -151,6 +154,7 @@ export const ModelManagement = () => {
         instagram_link: form.instagram_link,
         status: form.status,
         online: form.online,
+        is_featured: form.is_featured,
         avatar: avatarUrl,
         languages: form.languages,
         hobbies: form.hobbies,
@@ -338,15 +342,27 @@ export const ModelManagement = () => {
                 </div>
 
                 {/* Chat Availability */}
-                <div className="flex items-center gap-3">
-                  <label className="text-xs text-muted-foreground">Chat Available (Online)</label>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, online: !f.online }))}
-                    className={`w-10 h-6 rounded-full transition-colors relative ${form.online ? 'bg-online' : 'bg-secondary border border-border'}`}
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.online ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </button>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-muted-foreground">Chat Available (Online)</label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, online: !f.online }))}
+                      className={`w-10 h-6 rounded-full transition-colors relative ${form.online ? 'bg-online' : 'bg-secondary border border-border'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.online ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-muted-foreground">Featured on Landing</label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, is_featured: !f.is_featured }))}
+                      className={`w-10 h-6 rounded-full transition-colors relative ${form.is_featured ? 'bg-admin-primary' : 'bg-secondary border border-border'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.is_featured ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* System Prompt */}
@@ -398,12 +414,17 @@ export const ModelManagement = () => {
                 <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-80" />
                 {/* Status badge */}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 left-2 flex gap-1">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     m.status === 'active' ? 'bg-online/20 text-online' : 'bg-muted text-muted-foreground'
                   }`}>
                     {m.status === 'active' ? 'Active' : 'Hidden'}
                   </span>
+                  {(m as any).is_featured && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-admin-primary/20 text-admin-primary">
+                      Featured
+                    </span>
+                  )}
                 </div>
                 {m.online && (
                   <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full glass-card">
