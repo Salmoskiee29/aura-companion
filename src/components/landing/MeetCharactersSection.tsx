@@ -30,7 +30,19 @@ export function MeetCharactersSection() {
   }, []);
 
   if (loading) return null;
-  if (models.length === 0) return null;
+
+  if (models.length === 0) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-6">
+            MEET OUR BEST <span className="text-gradient-primary">AI CHARACTERS</span>
+          </h2>
+          <p className="text-muted-foreground text-lg">New AI characters coming soon.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-background">
