@@ -50,6 +50,7 @@ const emptyForm = {
   instagram_link: '',
   status: 'active',
   online: false,
+  is_featured: false,
   languages: [] as string[],
   hobbies: [] as string[],
   relationship_style: '',
