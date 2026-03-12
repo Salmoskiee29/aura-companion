@@ -21,7 +21,6 @@ export function MeetCharactersSection() {
       const { data } = await supabase
         .from('companion_models')
         .select('id, name, avatar, age, personality')
-        .eq('is_featured', true)
         .eq('status', 'active');
       setModels(data || []);
       setLoading(false);
