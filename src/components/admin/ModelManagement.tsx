@@ -414,12 +414,17 @@ export const ModelManagement = () => {
                 <img src={m.avatar} alt={m.name} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent opacity-80" />
                 {/* Status badge */}
-                <div className="absolute top-2 left-2">
+                <div className="absolute top-2 left-2 flex gap-1">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                     m.status === 'active' ? 'bg-online/20 text-online' : 'bg-muted text-muted-foreground'
                   }`}>
                     {m.status === 'active' ? 'Active' : 'Hidden'}
                   </span>
+                  {(m as any).is_featured && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-admin-primary/20 text-admin-primary">
+                      Featured
+                    </span>
+                  )}
                 </div>
                 {m.online && (
                   <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full glass-card">
