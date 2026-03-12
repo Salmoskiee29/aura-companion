@@ -342,15 +342,27 @@ export const ModelManagement = () => {
                 </div>
 
                 {/* Chat Availability */}
-                <div className="flex items-center gap-3">
-                  <label className="text-xs text-muted-foreground">Chat Available (Online)</label>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, online: !f.online }))}
-                    className={`w-10 h-6 rounded-full transition-colors relative ${form.online ? 'bg-online' : 'bg-secondary border border-border'}`}
-                  >
-                    <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.online ? 'translate-x-5' : 'translate-x-1'}`} />
-                  </button>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-muted-foreground">Chat Available (Online)</label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, online: !f.online }))}
+                      className={`w-10 h-6 rounded-full transition-colors relative ${form.online ? 'bg-online' : 'bg-secondary border border-border'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.online ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-muted-foreground">Featured on Landing</label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, is_featured: !f.is_featured }))}
+                      className={`w-10 h-6 rounded-full transition-colors relative ${form.is_featured ? 'bg-admin-primary' : 'bg-secondary border border-border'}`}
+                    >
+                      <div className={`w-4 h-4 rounded-full bg-foreground absolute top-1 transition-transform ${form.is_featured ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* System Prompt */}
