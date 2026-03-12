@@ -117,6 +117,7 @@ export type Database = {
           hobbies: string[]
           id: string
           instagram_link: string
+          is_featured: boolean
           languages: string[]
           message_length: string
           name: string
@@ -139,6 +140,7 @@ export type Database = {
           hobbies?: string[]
           id?: string
           instagram_link?: string
+          is_featured?: boolean
           languages?: string[]
           message_length?: string
           name: string
@@ -161,6 +163,7 @@ export type Database = {
           hobbies?: string[]
           id?: string
           instagram_link?: string
+          is_featured?: boolean
           languages?: string[]
           message_length?: string
           name?: string
