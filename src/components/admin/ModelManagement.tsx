@@ -154,6 +154,7 @@ export const ModelManagement = () => {
         instagram_link: form.instagram_link,
         status: form.status,
         online: form.online,
+        is_featured: form.is_featured,
         avatar: avatarUrl,
         languages: form.languages,
         hobbies: form.hobbies,
