@@ -24,6 +24,7 @@ interface ModelRow {
   emoji_usage: string;
   message_length: string;
   system_prompt: string;
+  is_featured: boolean;
 }
 
 const PERSONALITY_TAGS = ['Friendly', 'Shy', 'Romantic', 'Bold', 'Playful', 'Mysterious', 'Confident', 'Sweet', 'Intelligent', 'Funny', 'Calm', 'Flirty', 'Supportive', 'Dominant'];
