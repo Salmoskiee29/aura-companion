@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 
 const plans = [
   {
@@ -21,9 +21,11 @@ const plans = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-20 bg-background">
+    <section id="pricing" className="py-24 relative">
       <div className="container mx-auto px-4 text-center">
-        <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">Simple Pricing</h2>
+        <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+          Simple <span className="text-gradient-primary">Pricing</span>
+        </h2>
         <p className="text-muted-foreground text-lg mb-14 max-w-xl mx-auto">Start free. Upgrade when you need more.</p>
         <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {plans.map((plan) => (
@@ -32,10 +34,11 @@ export function PricingSection() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className={`rounded-2xl p-8 border transition-all ${plan.highlight ? 'border-primary/40 bg-primary/5 glow-primary' : 'border-border bg-card'}`}
+              className={`rounded-2xl p-8 transition-all ${plan.highlight ? 'glass-card-strong glow-primary border-primary/30' : 'glass-card-strong'}`}
             >
               {plan.highlight && (
-                <span className="inline-block px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full mb-4">
+                <span className="inline-flex items-center gap-1.5 px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full mb-4">
+                  <Sparkles className="h-3 w-3" />
                   Recommended
                 </span>
               )}
@@ -47,7 +50,7 @@ export function PricingSection() {
               <ul className="space-y-3 mb-8 text-left">
                 {plan.features.map((f) => (
                   <li key={f} className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <Check className="h-3.5 w-3.5 text-primary shrink-0" />
                     {f}
                   </li>
                 ))}
@@ -56,7 +59,7 @@ export function PricingSection() {
                 {plan.highlight ? (
                   <button className="w-full py-3 rounded-full btn-premium text-primary-foreground font-semibold">Get Premium</button>
                 ) : (
-                  <button className="w-full py-3 rounded-full bg-secondary text-secondary-foreground font-medium hover:bg-muted transition-colors">Start Free</button>
+                  <button className="w-full py-3 rounded-full glass-card-strong text-foreground font-medium hover:border-primary/30 transition-colors">Start Free</button>
                 )}
               </Link>
             </motion.div>
