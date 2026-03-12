@@ -12,7 +12,7 @@ const features = [
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="py-20 bg-card/30">
+    <section id="features" className="py-24 relative">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0 }}
@@ -20,8 +20,8 @@ export function FeaturesSection() {
           viewport={{ once: true }}
           className="text-center mb-14"
         >
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-foreground mb-4">
-            Everything You Need
+          <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+            Everything You <span className="text-gradient-primary">Need</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Create, customize, and interact with AI characters like never before.
@@ -35,9 +35,9 @@ export function FeaturesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.06 }}
-              className="rounded-2xl p-6 border border-border bg-card hover:border-primary/30 transition-colors"
+              className="rounded-2xl p-6 glass-card-strong glow-card group"
             >
-              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                 <f.icon className="h-5 w-5 text-primary" />
               </div>
               <h3 className="text-base font-semibold text-foreground mb-2 font-sans">{f.title}</h3>
