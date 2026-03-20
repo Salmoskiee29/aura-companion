@@ -208,8 +208,12 @@ const AdminDashboard = () => {
 
           {/* Models */}
           {activeTab === 'models' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
               <ModelManagement />
+              <div>
+                <h2 className="text-xl font-display font-bold text-foreground mb-4">Premium Content</h2>
+                <ContentManagement />
+              </div>
             </motion.div>
           )}
 
