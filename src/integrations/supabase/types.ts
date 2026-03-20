@@ -179,6 +179,35 @@ export type Database = {
         }
         Relationships: []
       }
+      content_unlocks: {
+        Row: {
+          content_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_unlocks_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "premium_content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           ai_enabled: boolean
@@ -288,6 +317,59 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premium_content: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_locked: boolean
+          media_type: string
+          media_url: string
+          model_id: string
+          preview_url: string | null
+          price: number
+          requires_model_subscription: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          media_type?: string
+          media_url?: string
+          model_id: string
+          preview_url?: string | null
+          price?: number
+          requires_model_subscription?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_locked?: boolean
+          media_type?: string
+          media_url?: string
+          model_id?: string
+          preview_url?: string | null
+          price?: number
+          requires_model_subscription?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premium_content_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "companion_models"
             referencedColumns: ["id"]
           },
         ]
