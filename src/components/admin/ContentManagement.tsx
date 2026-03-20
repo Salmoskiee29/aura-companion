@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Trash2, X, Upload, Lock, Unlock, Image as ImageIcon, Film, Diamond } from 'lucide-react';
+import { Plus, Search, Trash2, X, Upload, Lock, Unlock, Diamond, Film, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,16 +37,12 @@ export const ContentManagement = () => {
   // Form state
   const [formModelId, setFormModelId] = useState('');
   const [formTitle, setFormTitle] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formPrice, setFormPrice] = useState('3.99');
+  const [formDiamondPrice, setFormDiamondPrice] = useState('5');
   const [formMediaType, setFormMediaType] = useState<'image' | 'video'>('image');
   const [formRequiresSub, setFormRequiresSub] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
-  const [previewFile, setPreviewFile] = useState<File | null>(null);
-  const [blurPreview, setBlurPreview] = useState<string | null>(null);
   const mediaRef = useRef<HTMLInputElement>(null);
-  const previewRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -64,14 +60,11 @@ export const ContentManagement = () => {
   const resetForm = () => {
     setFormModelId('');
     setFormTitle('');
-    setFormDescription('');
-    setFormPrice('3.99');
+    setFormDiamondPrice('5');
     setFormMediaType('image');
     setFormRequiresSub(false);
     setMediaFile(null);
     setMediaPreview(null);
-    setPreviewFile(null);
-    setBlurPreview(null);
   };
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,13 +73,6 @@ export const ContentManagement = () => {
     setMediaFile(file);
     setMediaPreview(URL.createObjectURL(file));
     setFormMediaType(file.type.startsWith('video') ? 'video' : 'image');
-  };
-
-  const handlePreviewChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPreviewFile(file);
-    setBlurPreview(URL.createObjectURL(file));
   };
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
@@ -104,20 +90,15 @@ export const ContentManagement = () => {
     setSaving(true);
     try {
       const mediaUrl = await uploadFile(mediaFile, 'media');
-      let previewUrl: string | null = null;
-      if (previewFile) {
-        previewUrl = await uploadFile(previewFile, 'previews');
-      }
 
       const { error } = await supabase.from('premium_content').insert({
         model_id: formModelId,
         media_url: mediaUrl,
-        preview_url: previewUrl,
-        price: parseFloat(formPrice) || 0,
+        preview_url: null, // Auto-blur handled client-side
+        price: parseInt(formDiamondPrice) || 5,
         is_locked: true,
         requires_model_subscription: formRequiresSub,
         title: formTitle,
-        description: formDescription || null,
         media_type: formMediaType,
       });
       if (error) throw error;
@@ -212,7 +193,7 @@ export const ContentManagement = () => {
 
                 {/* Title */}
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Title</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">Title (optional)</label>
                   <input
                     value={formTitle}
                     onChange={e => setFormTitle(e.target.value)}
@@ -245,36 +226,23 @@ export const ContentManagement = () => {
                     )}
                   </div>
                   <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaChange} />
+                  <p className="text-[10px] text-muted-foreground mt-1">Blur preview is generated automatically — no need to upload a separate one.</p>
                 </div>
 
-                {/* Blurred Preview Upload */}
-                <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Blurred Preview (optional)</label>
-                  <div
-                    onClick={() => previewRef.current?.click()}
-                    className="w-full h-20 border-2 border-dashed border-border rounded-xl bg-secondary flex items-center justify-center cursor-pointer hover:border-admin-primary/50 transition-colors overflow-hidden"
-                  >
-                    {blurPreview ? (
-                      <img src={blurPreview} alt="Blur preview" className="w-full h-full object-cover blur-sm" />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Upload custom blur preview or leave empty for auto-blur</span>
-                    )}
-                  </div>
-                  <input ref={previewRef} type="file" accept="image/*" className="hidden" onChange={handlePreviewChange} />
-                </div>
-
-                {/* Price + Options */}
+                {/* Diamond Price + Options */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Price ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formPrice}
-                      onChange={e => setFormPrice(e.target.value)}
-                      className="w-full bg-secondary border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40"
-                    />
+                    <label className="text-xs text-muted-foreground mb-1 block">Price (💎 Diamonds)</label>
+                    <div className="relative">
+                      <Diamond className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                      <input
+                        type="number"
+                        min="1"
+                        value={formDiamondPrice}
+                        onChange={e => setFormDiamondPrice(e.target.value)}
+                        className="w-full bg-secondary border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-admin-primary/40"
+                      />
+                    </div>
                   </div>
                   <div className="flex items-end pb-1">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -328,7 +296,7 @@ export const ContentManagement = () => {
                     <Film className="h-10 w-10 text-muted-foreground" />
                   </div>
                 ) : (
-                  <img src={item.preview_url || item.media_url} alt={item.title} className="w-full h-full object-cover" />
+                  <img src={item.media_url} alt={item.title} className="w-full h-full object-cover" />
                 )}
                 <div className="absolute top-2 left-2 flex gap-1">
                   {item.is_locked ? (
@@ -354,7 +322,7 @@ export const ContentManagement = () => {
                     {getModelName(item.model_id)}
                   </span>
                   <span className="flex items-center gap-0.5 text-[10px] font-bold text-primary bg-background/70 px-2 py-0.5 rounded-full">
-                    <Diamond className="h-2.5 w-2.5" />${item.price}
+                    <Diamond className="h-2.5 w-2.5" />{item.price} 💎
                   </span>
                 </div>
               </div>
