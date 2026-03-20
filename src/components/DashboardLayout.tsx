@@ -30,6 +30,7 @@ const bottomNav = [
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { isVip } = useSubscriptionTier();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
