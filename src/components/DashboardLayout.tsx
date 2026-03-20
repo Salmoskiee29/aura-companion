@@ -104,6 +104,18 @@ export function DashboardLayout() {
             </div>
           </div>
 
+          {/* VIP-gated Premium section */}
+          {isVip && (
+            <div>
+              <p className="px-3 text-[11px] font-semibold text-primary uppercase tracking-wider mb-2 flex items-center gap-1">
+                <Crown className="h-3 w-3" /> Premium
+              </p>
+              <div className="space-y-1">
+                <NavItem item={{ to: '/dashboard/premium', icon: Crown, label: 'Exclusive Content' }} />
+              </div>
+            </div>
+          )}
+
           <div className="pt-4 border-t border-border/30 space-y-1">
             {bottomNav.map(item => <NavItem key={item.to} item={item} />)}
           </div>

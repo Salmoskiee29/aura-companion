@@ -55,6 +55,7 @@ const App = () => (
                   <Route path="my-characters" element={<MyCharacters />} />
                   <Route path="chats" element={<DashboardChats />} />
                   <Route path="billing" element={<Billing />} />
+                  <Route path="premium" element={<Premium />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
 
