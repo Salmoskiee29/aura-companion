@@ -34,6 +34,8 @@ const Premium = () => {
   const [unlockedIds, setUnlockedIds] = useState<Set<string>>(new Set());
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState<string | null>(null);
+  const [diamondBalance, setDiamondBalance] = useState<number>(0);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     const [modelsRes, contentRes] = await Promise.all([
@@ -43,26 +45,22 @@ const Premium = () => {
     if (modelsRes.data) setModels(modelsRes.data);
     if (contentRes.data) setContent(contentRes.data as ContentItem[]);
 
-    // Fetch user's unlocked content
     if (user?.id) {
-      const { data: unlocks } = await supabase
-        .from('content_unlocks')
-        .select('content_id')
-        .eq('user_id', user.id);
-      if (unlocks) {
-        setUnlockedIds(new Set(unlocks.map(u => u.content_id)));
-      }
+      const [unlocksRes, walletRes] = await Promise.all([
+        supabase.from('content_unlocks').select('content_id').eq('user_id', user.id),
+        supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single(),
+      ]);
+      if (unlocksRes.data) setUnlockedIds(new Set(unlocksRes.data.map(u => u.content_id)));
+      if (walletRes.data) setDiamondBalance(walletRes.data.balance);
     }
   }, [user?.id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Filter content by selected model
   const filteredContent = selectedModelId
     ? content.filter(c => c.model_id === selectedModelId)
     : content;
 
-  // Only show models that have content
   const modelsWithContent = models.filter(m => content.some(c => c.model_id === m.id));
   const selectedModel = models.find(m => m.id === selectedModelId);
 
@@ -70,27 +68,19 @@ const Premium = () => {
     if (!user?.id) return;
     setUnlocking(item.id);
     try {
-      // Deduct gems from wallet
-      const { data: wallet } = await supabase
-        .from('gem_wallets')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
-
       const gemCost = Math.ceil(item.price);
-      if (!wallet || wallet.balance < gemCost) {
-        toast.error(`Not enough gems. You need ${gemCost} 💎`);
+      if (diamondBalance < gemCost) {
+        toast.error(`Not enough diamonds! You need ${gemCost} 💎 but have ${diamondBalance} 💎`);
         return;
       }
 
-      // Deduct balance
+      const newBalance = diamondBalance - gemCost;
       const { error: walletErr } = await supabase
         .from('gem_wallets')
-        .update({ balance: wallet.balance - gemCost })
+        .update({ balance: newBalance })
         .eq('user_id', user.id);
       if (walletErr) throw walletErr;
 
-      // Record transaction
       await supabase.from('gem_transactions').insert({
         user_id: user.id,
         amount: -gemCost,
@@ -98,13 +88,13 @@ const Premium = () => {
         description: `Unlocked: ${item.title || 'Premium content'}`,
       });
 
-      // Record unlock
       const { error: unlockErr } = await supabase
         .from('content_unlocks')
         .insert({ user_id: user.id, content_id: item.id });
       if (unlockErr) throw unlockErr;
 
       setUnlockedIds(prev => new Set([...prev, item.id]));
+      setDiamondBalance(newBalance);
       toast.success('Content unlocked! 🎉');
     } catch (err: any) {
       toast.error(err.message || 'Failed to unlock');
@@ -127,11 +117,17 @@ const Premium = () => {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-10">
-      {/* Header */}
+      {/* Header with diamond balance */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
-          <Crown className="h-4 w-4" />
-          VIP EXCLUSIVE
+        <div className="flex items-center justify-center gap-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
+            <Crown className="h-4 w-4" />
+            VIP EXCLUSIVE
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/50 border border-border text-foreground text-sm font-bold">
+            <Diamond className="h-4 w-4 text-primary" />
+            {diamondBalance} 💎
+          </div>
         </div>
         <h1 className="text-3xl md:text-4xl font-bold text-foreground" style={{ fontFamily: "'Orbitron', sans-serif" }}>
           Premium <span className="text-gradient-primary">Content</span>
@@ -228,31 +224,41 @@ const Premium = () => {
                     className="relative aspect-[3/4] rounded-2xl overflow-hidden group border border-border/20"
                   >
                     {isUnlocked ? (
-                      // Unlocked: show full content
-                      <>
-                        <img src={item.media_url} alt={item.title} className="w-full h-full object-cover" />
+                      /* Unlocked: full content, clickable for lightbox */
+                      <div className="w-full h-full cursor-pointer" onClick={() => setLightboxUrl(item.media_url)}>
+                        <img src={item.media_url} alt={item.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                         <div className="absolute top-2 left-2">
                           <span className="px-2 py-0.5 rounded-full bg-green-500/80 text-white text-[10px] font-bold flex items-center gap-1">
                             <Unlock className="h-2.5 w-2.5" /> Unlocked
                           </span>
                         </div>
-                      </>
+                        <div className="absolute inset-0 bg-background/0 group-hover:bg-background/10 transition-colors flex items-center justify-center">
+                          <Eye className="h-8 w-8 text-white/0 group-hover:text-white/80 transition-all drop-shadow-lg" />
+                        </div>
+                      </div>
                     ) : (
-                      // Locked: show blurred preview
+                      /* Locked: auto-blurred via CSS */
                       <>
-                        {item.preview_url ? (
-                          <img src={item.preview_url} alt="" className="w-full h-full object-cover blur-lg scale-110" />
-                        ) : item.media_url ? (
-                          <img src={item.media_url} alt="" className="w-full h-full object-cover blur-xl scale-110" />
+                        {item.media_type === 'video' ? (
+                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
+                            <Lock className="h-10 w-10 text-muted-foreground" />
+                          </div>
                         ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary" />
+                          <img
+                            src={item.media_url}
+                            alt=""
+                            className="w-full h-full object-cover blur-xl scale-110"
+                          />
                         )}
-                        <div className="absolute inset-0 bg-background/40 backdrop-blur-sm" />
+                        <div className="absolute inset-0 bg-background/50 backdrop-blur-sm" />
 
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
-                          <div className="w-14 h-14 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center backdrop-blur-sm group-hover:scale-110 transition-transform">
+                          <motion.div
+                            whileHover={{ scale: 1.1 }}
+                            className="w-14 h-14 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center backdrop-blur-sm"
+                          >
                             <Lock className="h-6 w-6 text-primary" />
-                          </div>
+                          </motion.div>
                           {item.title && (
                             <span className="text-xs text-foreground font-medium px-3 text-center line-clamp-2">{item.title}</span>
                           )}
@@ -262,16 +268,18 @@ const Premium = () => {
                               <span className="text-[10px] font-bold text-primary">Model Sub Required</span>
                             </div>
                           ) : (
-                            <button
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => handleUnlock(item)}
                               disabled={unlocking === item.id}
-                              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors cursor-pointer"
+                              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/15 border border-primary/30 hover:bg-primary/25 transition-colors cursor-pointer"
                             >
-                              <Diamond className="h-3 w-3 text-primary" />
+                              <Diamond className="h-3.5 w-3.5 text-primary" />
                               <span className="text-xs font-bold text-primary">
-                                {unlocking === item.id ? 'Unlocking...' : `${Math.ceil(item.price)} 💎`}
+                                {unlocking === item.id ? 'Unlocking...' : `${Math.ceil(item.price)} 💎 Unlock`}
                               </span>
-                            </button>
+                            </motion.button>
                           )}
                         </div>
                       </>
@@ -283,6 +291,38 @@ const Premium = () => {
           </div>
         )}
       </section>
+
+      {/* Fullscreen Lightbox */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-secondary/80 border border-border flex items-center justify-center text-foreground hover:bg-secondary transition-colors"
+              onClick={() => setLightboxUrl(null)}
+            >
+              <X className="h-5 w-5" />
+            </motion.button>
+            <motion.img
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25 }}
+              src={lightboxUrl}
+              alt="Full view"
+              className="max-w-full max-h-[90vh] rounded-xl object-contain shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
