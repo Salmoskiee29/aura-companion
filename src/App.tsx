@@ -25,6 +25,7 @@ import MyCharacters from "./pages/dashboard/MyCharacters";
 import DashboardChats from "./pages/dashboard/Chats";
 import Billing from "./pages/Billing";
 import Settings from "./pages/Settings";
+import Premium from "./pages/dashboard/Premium";
 import AdminPanel from "./pages/admin/Dashboard";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
                   <Route path="my-characters" element={<MyCharacters />} />
                   <Route path="chats" element={<DashboardChats />} />
                   <Route path="billing" element={<Billing />} />
+                  <Route path="premium" element={<Premium />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
 

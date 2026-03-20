@@ -3,6 +3,7 @@ import { HeroSection } from '@/components/landing/HeroSection';
 import { FeaturedSection } from '@/components/landing/FeaturedSection';
 import { MeetCharactersSection } from '@/components/landing/MeetCharactersSection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
+import { VIPSection } from '@/components/landing/VIPSection';
 import { PricingSection } from '@/components/landing/PricingSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { LandingFooter } from '@/components/landing/LandingFooter';
@@ -18,6 +19,7 @@ const Landing = () => {
         <FeaturedSection />
         <MeetCharactersSection />
         <FeaturesSection />
+        <VIPSection />
         <PricingSection />
         <FAQSection />
         <LandingFooter />

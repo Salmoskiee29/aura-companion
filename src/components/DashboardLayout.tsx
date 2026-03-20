@@ -1,9 +1,10 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X, Heart, Compass, Sun, Moon, Bell } from 'lucide-react';
+import { Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X, Heart, Compass, Sun, Moon, Bell, Crown } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ const bottomNav = [
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { isVip } = useSubscriptionTier();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -101,6 +103,18 @@ export function DashboardLayout() {
               {createNav.map(item => <NavItem key={item.to} item={item} />)}
             </div>
           </div>
+
+          {/* VIP-gated Premium section */}
+          {isVip && (
+            <div>
+              <p className="px-3 text-[11px] font-semibold text-primary uppercase tracking-wider mb-2 flex items-center gap-1">
+                <Crown className="h-3 w-3" /> Premium
+              </p>
+              <div className="space-y-1">
+                <NavItem item={{ to: '/dashboard/premium', icon: Crown, label: 'Exclusive Content' }} />
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-border/30 space-y-1">
             {bottomNav.map(item => <NavItem key={item.to} item={item} />)}
