@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 const AdminAnalytics = lazy(() => import('./Analytics'));
 import { ModelManagement } from '@/components/admin/ModelManagement';
+import { ContentManagement } from '@/components/admin/ContentManagement';
 import { SubscriptionManagement } from '@/components/admin/SubscriptionManagement';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { ActivityLog } from '@/components/admin/ActivityLog';
