@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Send, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +46,7 @@ function ChatSkeleton() {
 
 const Chat = () => {
   const { modelId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [characterInfo, setCharacterInfo] = useState<{ id: string; name: string; avatar: string; online: boolean; isUserCharacter: boolean } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -398,15 +399,15 @@ const Chat = () => {
     }
   };
 
-  if (initialLoading) return <ChatSkeleton />;
+  useEffect(() => {
+    if (!initialLoading && !characterInfo) {
+      toast.error('Character not found. Redirecting to dashboard.');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [initialLoading, characterInfo, navigate]);
 
-  if (!characterInfo) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Character not found</p>
-      </div>
-    );
-  }
+  if (initialLoading) return <ChatSkeleton />;
+  if (!characterInfo) return null;
 
   return (
     <div className="h-screen flex flex-col bg-background">
