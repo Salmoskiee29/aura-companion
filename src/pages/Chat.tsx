@@ -46,6 +46,7 @@ function ChatSkeleton() {
 
 const Chat = () => {
   const { modelId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [characterInfo, setCharacterInfo] = useState<{ id: string; name: string; avatar: string; online: boolean; isUserCharacter: boolean } | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
