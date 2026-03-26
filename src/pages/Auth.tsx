@@ -30,15 +30,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const staticRedirect = getRoleRedirect(user.role, user.onboardingCompleted);
-      if (staticRedirect) {
-        navigate(staticRedirect, { replace: true });
-      } else {
-        // For users: try to resume last chat
-        getLastChatRoute(user.id).then(route => {
-          navigate(route || '/dashboard', { replace: true });
-        });
-      }
+      navigate(getRoleRedirect(user.role, user.onboardingCompleted), { replace: true });
     }
   }, [isAuthenticated, user, navigate]);
 
