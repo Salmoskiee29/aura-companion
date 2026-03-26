@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
 import { toast } from 'sonner';
-import { toast } from 'sonner';
 
 function getRoleRedirect(role: string, onboardingCompleted: boolean): string {
   if (role === 'developer') return '/admin-panel';
