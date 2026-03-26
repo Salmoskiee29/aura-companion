@@ -400,12 +400,11 @@ const Chat = () => {
 
   if (initialLoading) return <ChatSkeleton />;
 
+  const navigate = useNavigate();
+
   if (!characterInfo) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Character not found</p>
-      </div>
-    );
+    navigate('/dashboard', { replace: true });
+    return null;
   }
 
   return (
