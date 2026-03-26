@@ -9,23 +9,12 @@ import { lovable } from '@/integrations/lovable/index';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-async function getLastChatRoute(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('conversations')
-    .select('model_id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-  return data ? `/chat/${data.model_id}` : null;
-}
-
-function getRoleRedirect(role: string, onboardingCompleted: boolean) {
+function getRoleRedirect(role: string, onboardingCompleted: boolean): string {
   if (role === 'developer') return '/admin-panel';
   if (role === 'admin') return '/admin-panel';
   if (role === 'chatter') return '/chatter-panel';
   if (!onboardingCompleted) return '/onboarding';
-  return null; // will resolve async
+  return '/dashboard';
 }
 
 const Auth = () => {
