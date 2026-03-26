@@ -6,7 +6,7 @@ import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { lovable } from '@/integrations/lovable/index';
-import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { toast } from 'sonner';
 
 function getRoleRedirect(role: string, onboardingCompleted: boolean): string {
