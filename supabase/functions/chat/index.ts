@@ -509,7 +509,23 @@ ALWAYS:
       });
     }
 
-    // Increment usage after successful AI response
+    // Deduct 1 diamond for chat message (all tiers)
+    {
+      const { data: chatWallet } = await serviceClient
+        .from("gem_wallets").select("balance").eq("user_id", userId).single();
+      if (chatWallet && chatWallet.balance >= 1) {
+        await serviceClient.from("gem_wallets")
+          .update({ balance: chatWallet.balance - 1 }).eq("user_id", userId);
+        await serviceClient.from("gem_transactions").insert({
+          user_id: userId,
+          amount: -1,
+          type: "chat",
+          description: "Chat message",
+        });
+      }
+    }
+
+    // Increment daily counter
     if (tier === "free") {
       await serviceClient.from("subscriptions").update({
         free_messages_used: (sub?.free_messages_used || 0) + 1,
