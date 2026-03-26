@@ -399,10 +399,6 @@ const Chat = () => {
     }
   };
 
-  if (initialLoading) return <ChatSkeleton />;
-
-  const navigate = useNavigate();
-
   useEffect(() => {
     if (!initialLoading && !characterInfo) {
       toast.error('Character not found. Redirecting to dashboard.');
@@ -410,9 +406,8 @@ const Chat = () => {
     }
   }, [initialLoading, characterInfo, navigate]);
 
-  if (!characterInfo) {
-    return null;
-  }
+  if (initialLoading) return <ChatSkeleton />;
+  if (!characterInfo) return null;
 
   return (
     <div className="h-screen flex flex-col bg-background">
