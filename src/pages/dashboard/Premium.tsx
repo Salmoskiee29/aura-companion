@@ -74,27 +74,34 @@ const Premium = () => {
         return;
       }
 
-      const newBalance = diamondBalance - gemCost;
-      const { error: walletErr } = await supabase
-        .from('gem_wallets')
-        .update({ balance: newBalance })
-        .eq('user_id', user.id);
-      if (walletErr) throw walletErr;
-
-      await supabase.from('gem_transactions').insert({
-        user_id: user.id,
-        amount: -gemCost,
-        type: 'unlock',
-        description: `Unlocked: ${item.title || 'Premium content'}`,
+      // Server-side deduction via edge function
+      const { data: session } = await supabase.auth.getSession();
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deduct-diamonds`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action: 'content_unlock',
+          content_id: item.id,
+          cost: gemCost,
+        }),
       });
 
-      const { error: unlockErr } = await supabase
-        .from('content_unlocks')
-        .insert({ user_id: user.id, content_id: item.id });
-      if (unlockErr) throw unlockErr;
+      const result = await resp.json();
+      if (!resp.ok) {
+        if (result.insufficient) {
+          toast.error(`Not enough diamonds! You need ${gemCost} 💎 but have ${result.balance} 💎`);
+          setDiamondBalance(result.balance);
+        } else {
+          toast.error(result.error || 'Failed to unlock');
+        }
+        return;
+      }
 
       setUnlockedIds(prev => new Set([...prev, item.id]));
-      setDiamondBalance(newBalance);
+      setDiamondBalance(result.new_balance);
       toast.success('Content unlocked! 🎉');
     } catch (err: any) {
       toast.error(err.message || 'Failed to unlock');
