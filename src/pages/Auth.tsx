@@ -34,14 +34,8 @@ const Auth = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
-  const resolveAndNavigate = async (authUser: { id: string; role: string; onboardingCompleted: boolean }) => {
-    const staticRedirect = getRoleRedirect(authUser.role, authUser.onboardingCompleted);
-    if (staticRedirect) {
-      navigate(staticRedirect);
-      return;
-    }
-    const lastChat = await getLastChatRoute(authUser.id);
-    navigate(lastChat || '/dashboard');
+  const resolveAndNavigate = (authUser: { role: string; onboardingCompleted: boolean }) => {
+    navigate(getRoleRedirect(authUser.role, authUser.onboardingCompleted));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
