@@ -425,26 +425,39 @@ ALWAYS:
         console.error("[CHAT] Image gen failed:", imageResponse.status, await imageResponse.text().catch(() => ''));
       }
 
-      // Track image generation usage
+      // Track image generation usage & deduct diamonds (all tiers pay 2 diamonds for image gen)
       if (imageUrl) {
-        await serviceClient.from("gem_transactions").insert({
-          user_id: userId,
-          amount: tier === "free" ? -2 : 0,
-          type: "image_gen",
-          description: "In-chat image generation",
-        });
-        // Deduct diamonds for free users
-        if (tier === "free") {
-          const { data: wallet } = await serviceClient
-            .from("gem_wallets").select("balance").eq("user_id", userId).single();
-          if (wallet) {
-            await serviceClient.from("gem_wallets")
-              .update({ balance: Math.max(0, wallet.balance - 2) }).eq("user_id", userId);
-          }
+        const { data: wallet } = await serviceClient
+          .from("gem_wallets").select("balance").eq("user_id", userId).single();
+        if (wallet && wallet.balance >= 2) {
+          await serviceClient.from("gem_wallets")
+            .update({ balance: wallet.balance - 2 }).eq("user_id", userId);
+          await serviceClient.from("gem_transactions").insert({
+            user_id: userId,
+            amount: -2,
+            type: "image_gen",
+            description: "In-chat image generation",
+          });
         }
       }
 
-      // Increment chat usage
+      // Deduct 1 diamond for the chat message (all tiers)
+      {
+        const { data: chatWallet } = await serviceClient
+          .from("gem_wallets").select("balance").eq("user_id", userId).single();
+        if (chatWallet && chatWallet.balance >= 1) {
+          await serviceClient.from("gem_wallets")
+            .update({ balance: chatWallet.balance - 1 }).eq("user_id", userId);
+          await serviceClient.from("gem_transactions").insert({
+            user_id: userId,
+            amount: -1,
+            type: "chat",
+            description: "Chat message",
+          });
+        }
+      }
+
+      // Increment daily counter
       if (tier === "free") {
         await serviceClient.from("subscriptions").update({
           free_messages_used: (sub?.free_messages_used || 0) + 1,
