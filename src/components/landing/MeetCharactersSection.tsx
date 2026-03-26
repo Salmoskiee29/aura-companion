@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Heart } from 'lucide-react';
+import { ArrowRight, Heart, UserCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface FeaturedModel {
   id: string;
@@ -22,13 +23,30 @@ export function MeetCharactersSection() {
         .from('companion_models')
         .select('id, name, avatar, age, personality')
         .eq('status', 'active');
-      setModels(data || []);
+      // Filter out incomplete entries
+      const valid = (data || []).filter(m => m.id && m.name);
+      setModels(valid);
       setLoading(false);
     };
     fetchFeatured();
   }, []);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <section className="py-24 relative">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-14">
+            <Skeleton className="h-10 w-96 mx-auto" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   if (models.length === 0) {
     return (
@@ -42,6 +60,12 @@ export function MeetCharactersSection() {
       </section>
     );
   }
+
+  const gridCols = models.length >= 6
+    ? 'lg:grid-cols-6'
+    : models.length >= 4
+      ? 'lg:grid-cols-4'
+      : 'lg:grid-cols-3';
 
   return (
     <section className="py-24 relative">
@@ -61,7 +85,7 @@ export function MeetCharactersSection() {
           </h2>
         </motion.div>
 
-        <div className={`grid grid-cols-2 md:grid-cols-3 ${models.length >= 6 ? 'lg:grid-cols-6' : models.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-5 max-w-6xl mx-auto`}>
+        <div className={`grid grid-cols-2 md:grid-cols-3 ${gridCols} gap-4 md:gap-5 max-w-6xl mx-auto`}>
           {models.map((model, i) => (
             <motion.div
               key={model.id}
@@ -72,27 +96,44 @@ export function MeetCharactersSection() {
             >
               <Link to="/auth?mode=signup" className="group block">
                 <div className="relative rounded-2xl overflow-hidden aspect-[3/4] glass-card-strong glow-card">
-                  <img
-                    src={model.avatar}
-                    alt={model.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80" />
-                  
-                  {/* Gradient border glow on hover */}
+                  {model.avatar ? (
+                    <img
+                      src={model.avatar}
+                      alt={model.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                      <UserCircle className="h-12 w-12 text-muted-foreground/30" />
+                    </div>
+                  )}
+
+                  {/* Stronger gradient for readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                  {/* Hover glow */}
                   <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                     style={{
                       boxShadow: 'inset 0 0 0 1px hsl(325 80% 58% / 0.4), 0 0 30px -5px hsl(325 80% 58% / 0.2)',
                     }}
                   />
-                  
-                  <div className="absolute bottom-3 left-3 right-3 z-10">
-                    <p className="font-semibold text-foreground text-sm">{model.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/20">
-                        {model.personality}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">Age {model.age}</span>
+
+                  <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-10">
+                    <p className="font-bold text-white text-sm md:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight">
+                      {model.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {model.personality && (
+                        <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/30 text-white border border-primary/30 backdrop-blur-sm">
+                          {model.personality}
+                        </span>
+                      )}
+                      {model.age && (
+                        <span className="text-[10px] md:text-[11px] text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                          Age {model.age}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
