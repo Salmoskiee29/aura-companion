@@ -402,8 +402,14 @@ const Chat = () => {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!initialLoading && !characterInfo) {
+      toast.error('Character not found. Redirecting to dashboard.');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [initialLoading, characterInfo, navigate]);
+
   if (!characterInfo) {
-    navigate('/dashboard', { replace: true });
     return null;
   }
 
