@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.seed-master-admin]
 verify_jwt = false
+
+[functions.deduct-diamonds]
+verify_jwt = false

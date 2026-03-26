@@ -13,10 +13,18 @@ const PRODUCT_TO_TIER: Record<string, string> = {
   "prod_Tz5ELzQabf9Ta1": "vip",
 };
 
-const TIER_LIMITS: Record<string, { daily_human_replies: number; daily_diamonds: number }> = {
-  basic: { daily_human_replies: 15, daily_diamonds: 0 },
-  premium: { daily_human_replies: 50, daily_diamonds: 50 },
-  vip: { daily_human_replies: 999, daily_diamonds: 150 },
+const TIER_LIMITS: Record<string, { daily_human_replies: number }> = {
+  basic: { daily_human_replies: 15 },
+  premium: { daily_human_replies: 50 },
+  vip: { daily_human_replies: 999 },
+};
+
+// Diamond allocation per tier (reset monthly)
+const TIER_DIAMONDS: Record<string, number> = {
+  free: 10,
+  basic: 50,
+  premium: 150,
+  vip: 500,
 };
 
 serve(async (req) => {
@@ -55,6 +63,17 @@ serve(async (req) => {
 
     let tier = "free";
     let subscriptionEnd = null;
+    let previousTier = "free";
+
+    // Get current subscription record to check previous tier
+    const { data: currentSub } = await supabaseClient
+      .from("subscriptions")
+      .select("tier, current_period_end")
+      .eq("user_id", user.id)
+      .single();
+
+    previousTier = currentSub?.tier || "free";
+    const previousPeriodEnd = currentSub?.current_period_end || null;
 
     if (hasActiveSub) {
       const sub = subscriptions.data[0];
@@ -62,7 +81,7 @@ serve(async (req) => {
       const productId = sub.items.data[0].price.product as string;
       tier = PRODUCT_TO_TIER[productId] || "basic";
 
-      const limits = TIER_LIMITS[tier] || { daily_human_replies: 0, daily_diamonds: 0 };
+      const limits = TIER_LIMITS[tier] || { daily_human_replies: 0 };
 
       // Update subscription record
       await supabaseClient
@@ -77,17 +96,67 @@ serve(async (req) => {
           daily_human_replies_limit: limits.daily_human_replies,
         })
         .eq("user_id", user.id);
+
+      // Monthly diamond reset logic:
+      // Reset diamonds if:
+      // 1. Tier changed (upgrade/downgrade)
+      // 2. New billing period started (current_period_end changed)
+      const tierChanged = tier !== previousTier;
+      const periodChanged = subscriptionEnd !== previousPeriodEnd;
+
+      if (tierChanged || periodChanged) {
+        const diamondAllocation = TIER_DIAMONDS[tier] || 10;
+        console.log(`[CHECK-SUB] Resetting diamonds for ${user.email}: tier=${tier}, allocation=${diamondAllocation}, reason=${tierChanged ? 'tier_change' : 'period_reset'}`);
+
+        await supabaseClient
+          .from("gem_wallets")
+          .update({ balance: diamondAllocation })
+          .eq("user_id", user.id);
+
+        // Log the diamond reset
+        await supabaseClient.from("gem_transactions").insert({
+          user_id: user.id,
+          amount: diamondAllocation,
+          type: tierChanged ? "tier_allocation" : "monthly_reset",
+          description: `${tierChanged ? 'Tier changed to' : 'Monthly reset for'} ${tier}: ${diamondAllocation} diamonds allocated`,
+        });
+      }
     } else {
+      // No active subscription - downgrade to free
+      if (previousTier !== "free") {
+        // User lost their subscription, reset to free allocation
+        const freeAllocation = TIER_DIAMONDS.free;
+        await supabaseClient
+          .from("gem_wallets")
+          .update({ balance: freeAllocation })
+          .eq("user_id", user.id);
+
+        await supabaseClient.from("gem_transactions").insert({
+          user_id: user.id,
+          amount: freeAllocation,
+          type: "tier_allocation",
+          description: `Subscription expired, reset to free: ${freeAllocation} diamonds`,
+        });
+      }
+
       await supabaseClient
         .from("subscriptions")
         .update({ status: "inactive", plan: "free", tier: "free" })
         .eq("user_id", user.id);
     }
 
+    // Get current diamond balance to return
+    const { data: wallet } = await supabaseClient
+      .from("gem_wallets")
+      .select("balance")
+      .eq("user_id", user.id)
+      .single();
+
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       tier,
       subscription_end: subscriptionEnd,
+      diamond_balance: wallet?.balance ?? 0,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

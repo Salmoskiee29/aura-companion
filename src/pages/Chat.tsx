@@ -328,9 +328,9 @@ const Chat = () => {
             message: msgContent,
             sender_type: 'model',
           });
-          if (subscription && subscription.status !== 'active') {
-            setDiamondBalance(prev => Math.max(0, prev - 2));
-          }
+          // Refresh diamond balance from server (deduction happens server-side)
+          const { data: walletData } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
+          if (walletData) setDiamondBalance(walletData.balance);
         }
         return;
       }
@@ -388,9 +388,9 @@ const Chat = () => {
           message: assistantText,
           sender_type: 'model',
         });
-        if (subscription && subscription.status !== 'active') {
-          setDiamondBalance(prev => Math.max(0, prev - 1));
-        }
+        // Refresh diamond balance from server (deduction happens server-side)
+        const { data: walletData } = await supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single();
+        if (walletData) setDiamondBalance(walletData.balance);
       }
     } catch (err: any) {
       console.error('Chat error:', err);
