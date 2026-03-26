@@ -29,12 +29,13 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
     >
       <div onClick={handleClick} className="cursor-pointer">
         <div className="group rounded-2xl overflow-hidden border border-border bg-card glow-card transition-all duration-500 h-full flex flex-col">
+          {/* Clean image — no overlay */}
           <div className="relative aspect-[3/4] overflow-hidden flex-shrink-0">
             {model.avatar ? (
               <img
                 src={model.avatar}
                 alt={model.name || 'Character'}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 loading="lazy"
               />
             ) : (
@@ -43,10 +44,6 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
               </div>
             )}
 
-            {/* Stronger gradient for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
             {/* Online badge */}
             {model.online && (
               <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
@@ -54,27 +51,28 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
                 <span className="text-[11px] text-white font-medium">Online</span>
               </div>
             )}
+          </div>
 
-            {/* Bottom info over image */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-              <h3 className="text-base md:text-lg font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight">
+          {/* Text section — separate from image */}
+          <div className="p-3 md:p-4 space-y-2 flex-1 flex flex-col">
+            <div>
+              <h3 className="text-sm md:text-base font-bold text-foreground leading-tight">
                 {model.name || 'Unknown'}{model.age ? `, ${model.age}` : ''}
               </h3>
               {(model.nationality || model.occupation) && (
-                <p className="text-xs md:text-sm text-white/80 mt-0.5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+                <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5">
                   {[model.nationality, model.occupation].filter(Boolean).join(' · ')}
                 </p>
               )}
             </div>
-          </div>
 
-          <div className="p-3 md:p-4 space-y-2.5 flex-1 flex flex-col">
             {model.personality && (
-              <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 leading-relaxed flex-1">
+              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
                 {model.personality}
               </p>
             )}
-            <div className="flex items-center justify-between gap-2">
+
+            <div className="flex items-center justify-between gap-2 pt-1">
               <div className="flex flex-wrap gap-1.5 items-center min-w-0 flex-1">
                 {(model.traits || []).slice(0, 2).map((trait) => (
                   <span key={trait} className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[100px]">

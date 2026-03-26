@@ -23,7 +23,6 @@ export function MeetCharactersSection() {
         .from('companion_models')
         .select('id, name, avatar, age, personality')
         .eq('status', 'active');
-      // Filter out incomplete entries
       const valid = (data || []).filter(m => m.id && m.name);
       setModels(valid);
       setLoading(false);
@@ -40,7 +39,13 @@ export function MeetCharactersSection() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />
+              <div key={i} className="rounded-2xl overflow-hidden border border-border bg-card">
+                <Skeleton className="aspect-[3/4] w-full" />
+                <div className="p-3 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -95,42 +100,36 @@ export function MeetCharactersSection() {
               transition={{ delay: i * 0.08 }}
             >
               <Link to="/auth?mode=signup" className="group block">
-                <div className="relative rounded-2xl overflow-hidden aspect-[3/4] glass-card-strong glow-card">
-                  {model.avatar ? (
-                    <img
-                      src={model.avatar}
-                      alt={model.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                      <UserCircle className="h-12 w-12 text-muted-foreground/30" />
-                    </div>
-                  )}
+                <div className="rounded-2xl overflow-hidden border border-border bg-card glow-card transition-all duration-500">
+                  {/* Clean image — no overlay */}
+                  <div className="relative aspect-[3/4] overflow-hidden">
+                    {model.avatar ? (
+                      <img
+                        src={model.avatar}
+                        alt={model.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-secondary flex items-center justify-center">
+                        <UserCircle className="h-12 w-12 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Stronger gradient for readability */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-
-                  {/* Hover glow */}
-                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      boxShadow: 'inset 0 0 0 1px hsl(325 80% 58% / 0.4), 0 0 30px -5px hsl(325 80% 58% / 0.2)',
-                    }}
-                  />
-
-                  <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-10">
-                    <p className="font-bold text-white text-sm md:text-base drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] leading-tight">
+                  {/* Text section below image */}
+                  <div className="p-3 md:p-4">
+                    <p className="font-bold text-foreground text-sm md:text-base leading-tight">
                       {model.name}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {model.personality && (
-                        <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/30 text-white border border-primary/30 backdrop-blur-sm">
+                        <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                           {model.personality}
                         </span>
                       )}
                       {model.age && (
-                        <span className="text-[10px] md:text-[11px] text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                        <span className="text-[10px] md:text-[11px] text-muted-foreground">
                           Age {model.age}
                         </span>
                       )}
