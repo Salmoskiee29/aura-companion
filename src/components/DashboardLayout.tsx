@@ -1,5 +1,6 @@
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X, Heart, Compass, Sun, Moon, Bell, Crown } from 'lucide-react';
+import { Home, Users, UserCircle, Sparkles, MessageCircle, CreditCard, Settings, LogOut, Menu, X, Heart, Compass, Sun, Moon, Crown } from 'lucide-react';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
 import logoImg from '@/assets/yourmatch-logo.png';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
