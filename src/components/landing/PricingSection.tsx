@@ -59,13 +59,18 @@ export function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <Link to="/auth?mode=signup">
-                {plan.highlight ? (
-                  <button className="w-full py-3 rounded-full btn-premium text-primary-foreground font-semibold">Get Premium</button>
-                ) : (
+              {plan.comingSoon ? (
+                <button
+                  className="w-full py-3 rounded-full glass-card-strong text-muted-foreground font-medium opacity-50 cursor-not-allowed"
+                  onClick={() => toast.info('Premium features are coming soon. Currently all features are free! 🎉')}
+                >
+                  Coming Soon
+                </button>
+              ) : (
+                <Link to="/auth?mode=signup">
                   <button className="w-full py-3 rounded-full glass-card-strong text-foreground font-medium hover:border-primary/30 transition-colors">Start Free</button>
-                )}
-              </Link>
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>

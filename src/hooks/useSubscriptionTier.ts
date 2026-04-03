@@ -9,32 +9,11 @@ import type { TierKey } from '@/data/stripe-tiers';
  * This avoids hammering the edge function on every component mount.
  */
 export function useSubscriptionTier() {
-  const { user } = useAuth();
-  const [tier, setTier] = useState<TierKey>('free');
-  const [loading, setLoading] = useState(true);
+  // FREE MODE: Subscriptions disabled — everyone gets full access
+  const [loading] = useState(false);
+  const tier: TierKey = 'vip'; // Grant max access
 
-  const check = useCallback(async () => {
-    if (!user) { setTier('free'); setLoading(false); return; }
-    try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('tier, status')
-        .eq('user_id', user.id)
-        .single();
-      if (error) throw error;
-      if (data?.status === 'active' && data.tier) {
-        setTier(data.tier as TierKey);
-      } else {
-        setTier('free');
-      }
-    } catch {
-      setTier('free');
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const check = useCallback(async () => {}, []);
 
-  useEffect(() => { check(); }, [check]);
-
-  return { tier, isVip: tier === 'vip', loading, refresh: check };
+  return { tier, isVip: true, loading, refresh: check };
 }
