@@ -45,6 +45,12 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
               </div>
             )}
 
+            {model.age && (
+              <span className="absolute bottom-2.5 left-2.5 text-[11px] font-medium text-white px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm">
+                Age {model.age}
+              </span>
+            )}
+
             {model.online && (
               <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
