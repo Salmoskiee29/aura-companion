@@ -115,6 +115,11 @@ export function MeetCharactersSection() {
                         <UserCircle className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
+                    {model.age && (
+                      <span className="absolute bottom-2.5 left-2.5 text-[11px] font-medium text-white px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm">
+                        Age {model.age}
+                      </span>
+                    )}
                   </div>
 
                   <div className="p-3 md:p-4 flex-1 flex flex-col">
@@ -127,16 +132,6 @@ export function MeetCharactersSection() {
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-auto pt-2 flex-wrap">
-                      {model.personality && (
-                        <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                          {model.personality}
-                        </span>
-                      )}
-                      {model.age && (
-                        <span className="text-[10px] md:text-[11px] text-muted-foreground">
-                          Age {model.age}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
