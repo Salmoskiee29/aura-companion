@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Sparkles, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 const plans = [
   {
@@ -9,6 +11,7 @@ const plans = [
     period: '',
     features: ['10 diamonds to start', 'AI chat (diamond-based)', '1 character slot', 'AI image generation', 'Basic priority'],
     highlight: false,
+    comingSoon: false,
   },
   {
     name: 'Premium',
@@ -16,6 +19,7 @@ const plans = [
     period: '/mo',
     features: ['Unlimited AI chat', '50 daily diamonds', 'Unlimited characters', 'More image generations', 'Faster AI responses', 'Extended chat memory'],
     highlight: true,
+    comingSoon: true,
   },
 ];
 
