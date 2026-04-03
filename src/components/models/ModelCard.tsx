@@ -26,11 +26,12 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.5 }}
+      className="h-full"
     >
-      <div onClick={handleClick} className="cursor-pointer">
+      <div onClick={handleClick} className="cursor-pointer h-full">
         <div className="group rounded-2xl overflow-hidden border border-border bg-card glow-card transition-all duration-500 h-full flex flex-col">
-          {/* Clean image — no overlay */}
-          <div className="relative aspect-[3/4] overflow-hidden flex-shrink-0">
+          {/* Fixed-height image */}
+          <div className="relative h-52 md:h-64 overflow-hidden flex-shrink-0">
             {model.avatar ? (
               <img
                 src={model.avatar}
@@ -44,7 +45,6 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
               </div>
             )}
 
-            {/* Online badge */}
             {model.online && (
               <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
                 <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -53,8 +53,8 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
             )}
           </div>
 
-          {/* Text section — separate from image */}
-          <div className="p-3 md:p-4 space-y-2 flex-1 flex flex-col">
+          {/* Text section */}
+          <div className="p-3 md:p-4 flex-1 flex flex-col">
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground leading-tight">
                 {model.name || 'Unknown'}{model.age ? `, ${model.age}` : ''}
@@ -67,12 +67,12 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
             </div>
 
             {model.personality && (
-              <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
+              <p className="text-xs text-muted-foreground line-clamp-5 leading-relaxed mt-2">
                 {model.personality}
               </p>
             )}
 
-            <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="flex items-center justify-between gap-2 pt-1 mt-auto">
               <div className="flex flex-wrap gap-1.5 items-center min-w-0 flex-1">
                 {(model.traits || []).slice(0, 2).map((trait) => (
                   <span key={trait} className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[100px]">
