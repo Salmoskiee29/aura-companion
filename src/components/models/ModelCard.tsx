@@ -63,7 +63,7 @@ export const ModelCard = ({ model, index = 0 }: ModelCardProps) => {
           <div className="p-3 md:p-4 flex-1 flex flex-col">
             <div>
               <h3 className="text-sm md:text-base font-bold text-foreground leading-tight">
-                {model.name || 'Unknown'}{model.age ? `, ${model.age}` : ''}
+                {model.name || 'Unknown'}
               </h3>
               {(model.nationality || model.occupation) && (
                 <p className="text-[11px] md:text-xs text-muted-foreground mt-0.5">

@@ -132,16 +132,6 @@ export function MeetCharactersSection() {
                       </p>
                     )}
                     <div className="flex items-center gap-2 mt-auto pt-2 flex-wrap">
-                      {model.personality && (
-                        <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                          {model.personality}
-                        </span>
-                      )}
-                      {model.age && (
-                        <span className="text-[10px] md:text-[11px] text-muted-foreground">
-                          Age {model.age}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
