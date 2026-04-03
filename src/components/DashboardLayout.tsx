@@ -155,9 +155,7 @@ export function DashboardLayout() {
             </button>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
-              <Bell className="h-4 w-4" />
-            </Button>
+            <NotificationDropdown />
             <Button
               variant="ghost"
               size="icon"
