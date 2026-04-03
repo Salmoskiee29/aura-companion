@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Sparkles, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 const plans = [
   {
@@ -9,6 +11,7 @@ const plans = [
     period: '',
     features: ['10 diamonds to start', 'AI chat (diamond-based)', '1 character slot', 'AI image generation', 'Basic priority'],
     highlight: false,
+    comingSoon: false,
   },
   {
     name: 'Premium',
@@ -16,6 +19,7 @@ const plans = [
     period: '/mo',
     features: ['Unlimited AI chat', '50 daily diamonds', 'Unlimited characters', 'More image generations', 'Faster AI responses', 'Extended chat memory'],
     highlight: true,
+    comingSoon: true,
   },
 ];
 
@@ -55,13 +59,18 @@ export function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <Link to="/auth?mode=signup">
-                {plan.highlight ? (
-                  <button className="w-full py-3 rounded-full btn-premium text-primary-foreground font-semibold">Get Premium</button>
-                ) : (
+              {plan.comingSoon ? (
+                <button
+                  className="w-full py-3 rounded-full glass-card-strong text-muted-foreground font-medium opacity-50 cursor-not-allowed"
+                  onClick={() => toast.info('Premium features are coming soon. Currently all features are free! 🎉')}
+                >
+                  Coming Soon
+                </button>
+              ) : (
+                <Link to="/auth?mode=signup">
                   <button className="w-full py-3 rounded-full glass-card-strong text-foreground font-medium hover:border-primary/30 transition-colors">Start Free</button>
-                )}
-              </Link>
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>

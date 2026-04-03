@@ -58,8 +58,9 @@ const Chat = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const isSubscribed = subscription?.status === 'active';
-  const isLocked = !isSubscribed && diamondBalance <= 0;
+  // FREE MODE: no paywall
+  const isSubscribed = true;
+  const isLocked = false;
 
   // Determine if this is a user character (prefixed with "user-") or public model
   const isUserCharacter = modelId?.startsWith('user-') ?? false;

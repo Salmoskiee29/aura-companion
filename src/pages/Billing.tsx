@@ -1,12 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Crown, Sparkles, Zap, Diamond, ShieldCheck, Loader2 } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Diamond, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { TIERS, DIAMOND_BUNDLES, type TierKey } from '@/data/stripe-tiers';
-import { useSearchParams } from 'react-router-dom';
 
 const tierIcons: Record<TierKey, typeof Sparkles> = {
   free: Sparkles,
@@ -22,103 +19,11 @@ const tierFeatures: Record<TierKey, string[]> = {
   vip: ['Unlimited AI chat', 'Unlimited daily chats', 'Unlimited characters', 'Unlimited image generations', '150 daily diamond bonus', 'Priority AI responses', 'VIP badge ✨'],
 };
 
+const handleDisabledClick = () => {
+  toast.info('Premium features are coming soon. Currently all features are free! 🎉');
+};
+
 const Billing = () => {
-  const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [currentTier, setCurrentTier] = useState<TierKey>('free');
-  const [gemBalance, setGemBalance] = useState(0);
-  const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [checkingSubscription, setCheckingSubscription] = useState(false);
-
-  const checkSubscription = useCallback(async () => {
-    if (!user) return;
-    setCheckingSubscription(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      if (error) throw error;
-      if (data?.subscribed) {
-        setCurrentTier((data.tier as TierKey) || 'basic');
-        setSubscriptionEnd(data.subscription_end);
-      } else {
-        setCurrentTier('free');
-        setSubscriptionEnd(null);
-      }
-    } catch (e) {
-      console.error('Check subscription error:', e);
-    } finally {
-      setCheckingSubscription(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    checkSubscription();
-    supabase.from('gem_wallets').select('balance').eq('user_id', user.id).single().then(({ data }) => {
-      if (data) setGemBalance(data.balance);
-    });
-  }, [user, checkSubscription]);
-
-  useEffect(() => {
-    if (searchParams.get('success') === 'true') {
-      toast.success('Payment successful! Checking subscription...');
-      setTimeout(checkSubscription, 2000);
-    }
-    if (searchParams.get('canceled') === 'true') {
-      toast.info('Payment canceled.');
-    }
-  }, [searchParams, checkSubscription]);
-
-  useEffect(() => {
-    const interval = setInterval(checkSubscription, 60000);
-    return () => clearInterval(interval);
-  }, [checkSubscription]);
-
-  const handleSubscribe = async (tierKey: TierKey) => {
-    const tier = TIERS[tierKey];
-    if (!tier.price_id) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: tier.price_id, mode: 'subscription' },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to create checkout');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBuyGems = async (priceId: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId, mode: 'payment' },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to create checkout');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('customer-portal');
-      if (error) throw error;
-      if (data?.url) window.open(data.url, '_blank');
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to open portal');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const tierKeys: TierKey[] = ['free', 'basic', 'premium', 'vip'];
 
   return (
@@ -128,22 +33,12 @@ const Billing = () => {
           Choose Your <span className="text-gradient-primary">Plan</span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-lg mx-auto">
-          Start free, upgrade anytime. Cancel whenever you want.
+          All features are currently <span className="text-primary font-semibold">free</span>. Premium plans coming soon!
         </p>
-        <div className="mt-6 flex items-center justify-center gap-4 flex-wrap">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium">
-            <Crown className="h-4 w-4" />
-            {TIERS[currentTier].name} Plan
-          </div>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/50 border border-border text-foreground text-sm font-medium">
-            <Diamond className="h-4 w-4 text-primary" />
-            {gemBalance} Diamonds
-          </div>
-          {subscriptionEnd && (
-            <span className="text-xs text-muted-foreground">
-              Renews {new Date(subscriptionEnd).toLocaleDateString()}
-            </span>
-          )}
+        <div className="mt-6">
+          <Badge className="bg-primary/10 text-primary border-primary/30 text-sm px-4 py-1.5">
+            🎉 Free Access — All Features Unlocked
+          </Badge>
         </div>
       </motion.div>
 
@@ -151,8 +46,8 @@ const Billing = () => {
         {tierKeys.map((key, i) => {
           const tier = TIERS[key];
           const Icon = tierIcons[key];
-          const isCurrent = key === currentTier;
           const isHighlight = key === 'premium';
+          const isFree = key === 'free';
 
           return (
             <motion.div
@@ -161,17 +56,17 @@ const Billing = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08 }}
               className={`rounded-2xl p-6 border relative flex flex-col ${
-                isHighlight ? 'border-primary bg-primary/5 glow-primary' : 'border-border bg-card'
+                isHighlight ? 'border-primary/30 bg-primary/5' : 'border-border bg-card'
               }`}
             >
-              {isHighlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-                  Most Popular
+              {!isFree && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-muted text-muted-foreground text-xs font-semibold rounded-full border border-border">
+                  Coming Soon
                 </div>
               )}
-              {isCurrent && (
-                <div className="absolute -top-3 right-4 px-3 py-1 bg-accent text-accent-foreground text-xs font-semibold rounded-full border border-border">
-                  Your Plan
+              {isFree && (
+                <div className="absolute -top-3 right-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
+                  Active
                 </div>
               )}
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
@@ -190,24 +85,17 @@ const Billing = () => {
                   </li>
                 ))}
               </ul>
-              {isCurrent ? (
-                <div className="space-y-2">
-                  <Button className="w-full bg-secondary text-secondary-foreground" disabled>
-                    Current Plan
-                  </Button>
-                  {key !== 'free' && (
-                    <Button variant="outline" className="w-full text-xs" onClick={handleManageSubscription} disabled={loading}>
-                      Manage Subscription
-                    </Button>
-                  )}
-                </div>
+              {isFree ? (
+                <Button className="w-full bg-primary text-primary-foreground" disabled>
+                  Current Plan
+                </Button>
               ) : (
                 <Button
-                  className={`w-full ${isHighlight ? 'btn-premium text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
-                  disabled={key === 'free' || loading}
-                  onClick={() => handleSubscribe(key)}
+                  className="w-full opacity-50 cursor-not-allowed"
+                  variant="secondary"
+                  onClick={handleDisabledClick}
                 >
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Subscribe'}
+                  Coming Soon
                 </Button>
               )}
             </motion.div>
@@ -215,15 +103,14 @@ const Billing = () => {
         })}
       </div>
 
+      {/* Diamond Store — disabled */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <div className="text-center mb-8">
           <h2 className="text-2xl font-display font-bold text-foreground mb-2">
             <Diamond className="inline h-6 w-6 text-primary mr-2" />
             Diamond Store
           </h2>
-          <p className="text-muted-foreground text-sm">
-            Use diamonds for AI chats and image generations on the free plan.
-          </p>
+          <Badge className="bg-muted text-muted-foreground border-border text-xs">Coming Soon</Badge>
         </div>
         <div className="grid sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
           {DIAMOND_BUNDLES.map((bundle, i) => (
@@ -232,7 +119,7 @@ const Billing = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 + i * 0.08 }}
-              className="rounded-2xl p-6 border border-border bg-card text-center hover:border-primary/40 transition-colors"
+              className="rounded-2xl p-6 border border-border bg-card text-center opacity-60"
             >
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <Diamond className="h-6 w-6 text-primary" />
@@ -240,29 +127,16 @@ const Billing = () => {
               <h3 className="text-2xl font-bold text-foreground">{bundle.diamonds}</h3>
               <p className="text-sm text-muted-foreground mb-4">Diamonds</p>
               <Button
-                className="w-full btn-premium text-primary-foreground"
-                onClick={() => handleBuyGems(bundle.price_id)}
-                disabled={loading}
+                className="w-full opacity-50 cursor-not-allowed"
+                variant="secondary"
+                onClick={handleDisabledClick}
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : bundle.price}
+                {bundle.price}
               </Button>
             </motion.div>
           ))}
         </div>
       </motion.div>
-
-      <div className="text-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={checkSubscription}
-          disabled={checkingSubscription}
-          className="text-muted-foreground text-xs"
-        >
-          {checkingSubscription ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-          Refresh Subscription Status
-        </Button>
-      </div>
     </div>
   );
 };

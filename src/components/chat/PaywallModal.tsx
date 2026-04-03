@@ -68,17 +68,12 @@ export const PaywallModal = ({ open, onClose, modelName, diamondBalance = 0 }: P
                 )}
 
                 <div className="space-y-3">
-                  <Link to="/dashboard/billing">
-                    <button className="w-full py-4 rounded-2xl btn-premium text-primary-foreground font-semibold text-base">
-                      <Crown className="inline mr-2 h-5 w-5" />
-                      Unlock Unlimited — $14.99/mo
-                    </button>
-                  </Link>
                   <button
                     onClick={onClose}
-                    className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
+                    className="w-full py-4 rounded-2xl btn-premium text-primary-foreground font-semibold text-base"
                   >
-                    Maybe later
+                    <Sparkles className="inline mr-2 h-5 w-5" />
+                    Continue — It's Free! 🎉
                   </button>
                 </div>
 

@@ -133,23 +133,14 @@ export function VIPSection() {
             transition={{ delay: 0.4 }}
             className="text-center"
           >
-            {isAuthenticated && isVip ? (
-              <Link to="/dashboard/premium">
-                <Button size="lg" className="btn-premium px-8 py-6 text-base font-bold">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Go to Premium Dashboard
-                </Button>
-              </Link>
-            ) : (
-              <Link to={isAuthenticated ? '/dashboard/billing' : '/auth?mode=login'}>
-                <Button size="lg" className="btn-premium px-8 py-6 text-base font-bold">
-                  <Crown className="mr-2 h-5 w-5" />
-                  Subscribe to VIP — $29.99/mo
-                </Button>
-              </Link>
-            )}
+            <Link to={isAuthenticated ? '/dashboard/premium' : '/auth?mode=login'}>
+              <Button size="lg" className="btn-premium px-8 py-6 text-base font-bold">
+                <Sparkles className="mr-2 h-5 w-5" />
+                {isAuthenticated ? 'Go to Premium Dashboard' : 'Sign Up — Free Access'}
+              </Button>
+            </Link>
             <p className="text-xs text-muted-foreground mt-3">
-              Limited access · Exclusive · Private
+              🎉 Currently free for all users
             </p>
           </motion.div>
         </div>

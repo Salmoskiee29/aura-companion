@@ -118,9 +118,10 @@ const Premium = () => {
     );
   }
 
-  if (!isVip) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // FREE MODE: Allow all users access
+  // if (!isVip) {
+  //   return <Navigate to="/dashboard" replace />;
+  // }
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-10">

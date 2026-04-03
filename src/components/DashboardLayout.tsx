@@ -166,8 +166,8 @@ export function DashboardLayout() {
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
             <Link to="/dashboard/billing">
-              <button className="ml-2 px-4 py-1.5 rounded-full btn-premium text-primary-foreground text-xs font-semibold">
-                PRICING
+              <button className="ml-2 px-4 py-1.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold border border-border cursor-default">
+                FREE ACCESS
               </button>
             </Link>
           </div>
