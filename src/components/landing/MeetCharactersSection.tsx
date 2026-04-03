@@ -98,11 +98,11 @@ export function MeetCharactersSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
+              className="h-full"
             >
-              <Link to="/auth?mode=signup" className="group block">
-                <div className="rounded-2xl overflow-hidden border border-border bg-card glow-card transition-all duration-500">
-                  {/* Clean image — no overlay */}
-                  <div className="relative aspect-[3/4] overflow-hidden">
+              <Link to="/auth?mode=signup" className="group block h-full">
+                <div className="rounded-2xl overflow-hidden border border-border bg-card glow-card transition-all duration-500 h-full flex flex-col">
+                  <div className="relative h-52 md:h-64 overflow-hidden flex-shrink-0">
                     {model.avatar ? (
                       <img
                         src={model.avatar}
@@ -117,12 +117,16 @@ export function MeetCharactersSection() {
                     )}
                   </div>
 
-                  {/* Text section below image */}
-                  <div className="p-3 md:p-4">
+                  <div className="p-3 md:p-4 flex-1 flex flex-col">
                     <p className="font-bold text-foreground text-sm md:text-base leading-tight">
                       {model.name}
                     </p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {model.personality && (
+                      <p className="text-xs text-muted-foreground line-clamp-5 leading-relaxed mt-1.5">
+                        {model.personality}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-auto pt-2 flex-wrap">
                       {model.personality && (
                         <span className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                           {model.personality}
