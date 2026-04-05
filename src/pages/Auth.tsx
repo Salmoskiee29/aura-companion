@@ -5,7 +5,6 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 function getRoleRedirect(role: string, onboardingCompleted: boolean): string {
