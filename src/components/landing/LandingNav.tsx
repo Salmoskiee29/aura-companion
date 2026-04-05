@@ -25,7 +25,7 @@ export function LandingNav() {
     if (clickTimer.current) clearTimeout(clickTimer.current);
     if (clickCount.current >= 5) {
       clickCount.current = 0;
-      toast('⚡ Developed by YourMatch Dev Team', { duration: 3000 });
+      toast('⚡ Developed by Salmoskie', { duration: 3000 });
       return;
     }
     clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 800);
