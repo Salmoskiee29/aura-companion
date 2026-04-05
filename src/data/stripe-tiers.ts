@@ -5,8 +5,6 @@ export const TIERS = {
     period: '',
     diamonds: 10,
     daily_human_replies: 0,
-    product_id: null,
-    price_id: null,
   },
   basic: {
     name: 'Basic',
@@ -14,8 +12,6 @@ export const TIERS = {
     period: '/mo',
     diamonds: 0,
     daily_human_replies: 15,
-    product_id: 'prod_Tz5DgQ4CQX5Ns1',
-    price_id: 'price_1T17316Vjph7vzkpVl1AKSCF',
   },
   premium: {
     name: 'Premium',
@@ -23,8 +19,6 @@ export const TIERS = {
     period: '/mo',
     diamonds: 50,
     daily_human_replies: 50,
-    product_id: 'prod_Tz5DNqIeI5Uu0M',
-    price_id: 'price_1T173J6Vjph7vzkpbAX27zGR',
   },
   vip: {
     name: 'VIP',
@@ -32,22 +26,13 @@ export const TIERS = {
     period: '/mo',
     diamonds: 150,
     daily_human_replies: 999,
-    product_id: 'prod_Tz5ELzQabf9Ta1',
-    price_id: 'price_1T173e6Vjph7vzkp2hKzgfDC',
   },
 } as const;
 
 export type TierKey = keyof typeof TIERS;
 
 export const DIAMOND_BUNDLES = [
-  { diamonds: 100, price: '$4.99', price_id: 'price_1T17456Vjph7vzkpiV54mGRv' },
-  { diamonds: 500, price: '$19.99', price_id: 'price_1T174P6Vjph7vzkpLBPk5ws3' },
-  { diamonds: 1000, price: '$34.99', price_id: 'price_1T174b6Vjph7vzkp1LyDiNJP' },
+  { diamonds: 100, price: '$4.99' },
+  { diamonds: 500, price: '$19.99' },
+  { diamonds: 1000, price: '$34.99' },
 ] as const;
-
-// Map Stripe product IDs to tier keys
-export const PRODUCT_TO_TIER: Record<string, TierKey> = {
-  'prod_Tz5DgQ4CQX5Ns1': 'basic',
-  'prod_Tz5DNqIeI5Uu0M': 'premium',
-  'prod_Tz5ELzQabf9Ta1': 'vip',
-};
