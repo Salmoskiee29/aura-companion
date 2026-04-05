@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Globe, Menu, X, Heart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import logoImg from '@/assets/yourmatch-logo.png';
+import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
