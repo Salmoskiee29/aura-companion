@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Globe, Menu, X, Heart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import logoImg from '@/assets/yourmatch-logo.png';
+import { toast } from 'sonner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -16,11 +17,24 @@ export function LandingNav() {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, languageNames, availableLanguages, t } = useLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const clickCount = useRef(0);
+  const clickTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+    clickCount.current++;
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    if (clickCount.current >= 5) {
+      clickCount.current = 0;
+      toast('⚡ Developed by YourMatch Dev Team', { duration: 3000 });
+      return;
+    }
+    clickTimer.current = setTimeout(() => { clickCount.current = 0; }, 800);
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/20">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" className="flex items-center gap-2.5" onClick={handleLogoClick}>
           <img src={logoImg} alt="YourMatch" className="h-7 w-7 rounded" />
           <span className="text-lg font-bold text-foreground tracking-tight" style={{ fontFamily: "'Orbitron', sans-serif" }}>
             YourMatch
