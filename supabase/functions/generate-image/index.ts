@@ -7,7 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Tier-based daily image generation limits
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
 const TIER_IMAGE_LIMITS: Record<string, number> = {
   free: 3,
   basic: 10,
@@ -55,7 +56,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check subscription tier and enforce image generation limits
     const { data: sub } = await serviceClient
       .from("subscriptions")
       .select("status, tier")
@@ -65,7 +65,6 @@ serve(async (req) => {
     const tier = (sub?.status === "active" && sub?.tier) ? sub.tier : "free";
     const dailyLimit = TIER_IMAGE_LIMITS[tier] || 3;
 
-    // Count today's image generations
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const { count: todayCount } = await serviceClient
@@ -82,7 +81,6 @@ serve(async (req) => {
       });
     }
 
-    // For free users, also check diamond balance
     if (tier === "free") {
       const { data: wallet } = await serviceClient
         .from("gem_wallets")
@@ -98,19 +96,19 @@ serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     console.log("[GENERATE-IMAGE] Generating image for user:", user.id);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-pro-image-preview",
+        model: "gemini-2.0-flash-preview-image-generation",
         messages: [
           {
             role: "user",
@@ -128,14 +126,8 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const t = await response.text();
-      console.error("[GENERATE-IMAGE] AI gateway error:", response.status, t);
+      console.error("[GENERATE-IMAGE] Gemini API error:", response.status, t);
       return new Response(JSON.stringify({ error: "Image generation failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -153,7 +145,6 @@ serve(async (req) => {
       });
     }
 
-    // Upload to storage
     const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
     const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
     const fileName = `${user.id}/${crypto.randomUUID()}.png`;
@@ -173,7 +164,6 @@ serve(async (req) => {
       .from("character-avatars")
       .getPublicUrl(fileName);
 
-    // Track usage
     await serviceClient.from("gem_transactions").insert({
       user_id: user.id,
       amount: tier === "free" ? -2 : 0,
@@ -181,7 +171,6 @@ serve(async (req) => {
       description: "AI image generation",
     });
 
-    // Deduct diamonds for free users
     if (tier === "free") {
       const { data: wallet } = await serviceClient
         .from("gem_wallets")

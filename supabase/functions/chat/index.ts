@@ -7,6 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+
 const FREE_DAILY_LIMIT = 20;
 
 const TIER_CHAT_LIMITS: Record<string, number> = {
@@ -33,21 +35,20 @@ const PERSONALITY_SYSTEM_PROMPTS: Record<string, string> = {
 };
 
 async function detectImageRequestWithAI(message: string, apiKey: string): Promise<{ isImageRequest: boolean; style: string }> {
-  // Quick regex pre-check for obvious non-image messages (performance optimization)
   const quickCheck = /(pic|photo|image|selfie|picture|see you|see me|look like|show.*you|send.*you|nudes|outfit)/i;
   if (!quickCheck.test(message)) {
     return { isImageRequest: false, style: "taking a smartphone selfie, casual close-up" };
   }
 
   try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
@@ -68,7 +69,6 @@ If it is NOT an image request, set style to "".`
 
     const data = await resp.json();
     const content = data.choices?.[0]?.message?.content || "";
-    // Strip markdown code fences if present
     const cleaned = content.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
     const parsed = JSON.parse(cleaned);
     return {
@@ -127,7 +127,6 @@ function buildImagePromptFromDescription(description: string, mood: string, user
   return `Generate a new photo of this EXACT same person from the reference image. ${userRequestStyle}. ${expression}. The person is ${description}. Real human skin with pores, natural lighting, authentic photo look, DSLR quality, shallow depth of field. CRITICAL: The generated person must have the EXACT same face, facial structure, hair color, hair style, skin tone, eye color, and body type as shown in the reference image. NOT AI generated, NOT cartoon, NOT illustration.`;
 }
 
-/** Check and reset daily counters if 24h have passed. Returns updated sub record. */
 async function getSubscriptionWithReset(serviceClient: any, userId: string) {
   const { data: sub } = await serviceClient
     .from("subscriptions").select("*").eq("user_id", userId).single();
@@ -139,7 +138,6 @@ async function getSubscriptionWithReset(serviceClient: any, userId: string) {
   const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
 
   if (hoursSinceReset >= 24) {
-    // Reset daily counters
     const { data: updated } = await serviceClient
       .from("subscriptions")
       .update({
@@ -195,26 +193,21 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get subscription with daily reset check
     const sub = await getSubscriptionWithReset(serviceClient, userId);
     const isActiveSubscriber = sub?.status === "active" && sub?.tier && sub.tier !== "free";
     const tier = isActiveSubscriber ? sub.tier : "free";
 
-    // Check if subscription expired
     if (isActiveSubscriber && sub.current_period_end) {
       const expiry = new Date(sub.current_period_end);
       if (expiry < new Date()) {
-        // Downgrade to free
         await serviceClient.from("subscriptions").update({
           status: "inactive", plan: "free", tier: "free",
           free_messages_used: 0,
         }).eq("user_id", userId);
-        // Re-check as free user
         return handleFreeUserLimit(sub, serviceClient, userId, req, authHeader);
       }
     }
 
-    // Enforce limits based on tier
     const dailyLimit = TIER_CHAT_LIMITS[tier] || FREE_DAILY_LIMIT;
 
     if (tier === "free") {
@@ -241,7 +234,6 @@ serve(async (req) => {
       }
     }
 
-    // Build system prompt from model personality
     let systemPrompt = "You are a friendly, engaging AI companion. Be warm, flirty, and conversational. Keep responses concise (2-3 sentences). Use occasional emojis.";
     let characterDescription = "";
     let characterMood = "sweet";
@@ -328,14 +320,12 @@ ALWAYS:
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
-    // Use AI-powered intent detection instead of rigid regex
-    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, LOVABLE_API_KEY);
+    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, GEMINI_API_KEY);
 
     if (isImageRequest && characterDescription) {
-      // Check image generation daily limit
       const imageLimit = TIER_IMAGE_LIMITS[tier] || 3;
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -359,9 +349,7 @@ ALWAYS:
       
       console.log("[CHAT] Image request detected. Avatar URL:", characterAvatarUrl ? "present" : "missing");
       console.log("[CHAT] Image style:", userRequestStyle);
-      console.log("[CHAT] Generating text + image in parallel...");
       
-      // Build image message content - use avatar as face reference if available
       const imageMessageContent = characterAvatarUrl
         ? [
             { type: "text", text: imagePrompt },
@@ -369,30 +357,29 @@ ALWAYS:
           ]
         : imagePrompt;
 
-      // Run text and image generation in parallel for speed
       const [textResponse, imageResponse] = await Promise.all([
-        fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        fetch(GEMINI_API_URL, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${GEMINI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond naturally acknowledging you're sending a photo. Keep it to 1-2 sentences. Be simple and natural." },
               ...messages,
             ],
           }),
         }),
-        fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        fetch(GEMINI_API_URL, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${GEMINI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3.1-flash-image-preview",
+            model: "gemini-2.0-flash-preview-image-generation",
             messages: [{ role: "user", content: imageMessageContent }],
             modalities: ["image", "text"],
           }),
@@ -425,7 +412,6 @@ ALWAYS:
         console.error("[CHAT] Image gen failed:", imageResponse.status, await imageResponse.text().catch(() => ''));
       }
 
-      // Track image generation usage & deduct diamonds (all tiers pay 2 diamonds for image gen)
       if (imageUrl) {
         const { data: wallet } = await serviceClient
           .from("gem_wallets").select("balance").eq("user_id", userId).single();
@@ -441,7 +427,6 @@ ALWAYS:
         }
       }
 
-      // Deduct 1 diamond for the chat message (all tiers)
       {
         const { data: chatWallet } = await serviceClient
           .from("gem_wallets").select("balance").eq("user_id", userId).single();
@@ -457,7 +442,6 @@ ALWAYS:
         }
       }
 
-      // Increment daily counter
       if (tier === "free") {
         await serviceClient.from("subscriptions").update({
           free_messages_used: (sub?.free_messages_used || 0) + 1,
@@ -478,14 +462,14 @@ ALWAYS:
     }
 
     // Standard streaming chat response
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(GEMINI_API_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "gemini-2.5-flash",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
@@ -509,7 +493,6 @@ ALWAYS:
       });
     }
 
-    // Deduct 1 diamond for chat message (all tiers)
     {
       const { data: chatWallet } = await serviceClient
         .from("gem_wallets").select("balance").eq("user_id", userId).single();
@@ -525,7 +508,6 @@ ALWAYS:
       }
     }
 
-    // Increment daily counter
     if (tier === "free") {
       await serviceClient.from("subscriptions").update({
         free_messages_used: (sub?.free_messages_used || 0) + 1,
@@ -559,7 +541,6 @@ async function handleFreeUserLimit(sub: any, serviceClient: any, userId: string,
       status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  // Otherwise allow — will be handled by main flow on next call
   return new Response(JSON.stringify({ error: "Subscription expired. You have been downgraded to the free plan.", downgraded: true }), {
     status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
