@@ -5,7 +5,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import logoImg from '@/assets/yourmatch-logo.png';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 function getRoleRedirect(role: string, onboardingCompleted: boolean): string {
@@ -162,8 +162,11 @@ const Auth = () => {
               onClick={async () => {
                 setGoogleLoading(true);
                 try {
-                  const { error } = await lovable.auth.signInWithOAuth('google', {
-                    redirect_uri: window.location.origin,
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                      redirectTo: window.location.origin,
+                    },
                   });
                   if (error) throw error;
                 } catch (err: any) {
