@@ -43,12 +43,13 @@ const Auth = () => {
       if (mode === 'login') {
         const authUser = await login(email, password);
         toast.success('Welcome back!');
-        await resolveAndNavigate(authUser);
+        resolveAndNavigate(authUser);
       } else {
         await signup(email, password);
-        toast.success('Account created! Redirecting...');
-        const authUser = await login(email, password);
-        await resolveAndNavigate(authUser);
+        toast.success('Check your email to confirm your account before logging in.');
+        setMode('login');
+        setEmail('');
+        setPassword('');
       }
     } catch (err: any) {
       toast.error(err?.message || 'Something went wrong.');
