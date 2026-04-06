@@ -58,7 +58,7 @@ export default function Onboarding() {
     if (!user) return;
     setSaving(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           nickname: nickname || user.displayName,
@@ -66,10 +66,18 @@ export default function Onboarding() {
           onboarding_completed: true,
         })
         .eq('user_id', user.id);
+      if (error) throw error;
+      
+      // Refresh user state and wait for it to propagate
       await refreshUser();
+      
+      // Small delay to ensure state propagation before navigation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       toast.success("You're all set! Let's go 🎉");
       navigate('/dashboard', { replace: true });
-    } catch {
+    } catch (err) {
+      console.error('Onboarding finish error:', err);
       toast.error('Failed to save. Please try again.');
     } finally {
       setSaving(false);
