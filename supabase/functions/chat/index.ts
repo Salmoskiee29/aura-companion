@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const FREE_DAILY_LIMIT = 20;
 
@@ -16,15 +16,14 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3)
     const resp = await fetch(url, options);
     if (resp.status === 429 && attempt < maxRetries) {
       const retryAfter = resp.headers.get("Retry-After");
-      const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : Math.min(1000 * Math.pow(2, attempt), 8000);
+      const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : Math.min(2000 * Math.pow(2, attempt), 16000);
       console.log(`[CHAT] Rate limited, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
-      await resp.text(); // consume body
+      await resp.text();
       await new Promise(r => setTimeout(r, waitMs));
       continue;
     }
     return resp;
   }
-  // Should not reach here, but just in case
   return fetch(url, options);
 }
 
@@ -58,14 +57,14 @@ async function detectImageRequestWithAI(message: string, apiKey: string): Promis
   }
 
   try {
-    const resp = await fetchWithRetry(GEMINI_API_URL, {
+    const resp = await fetchWithRetry(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "system",
@@ -337,10 +336,10 @@ ALWAYS:
 
     const lastUserMessage = messages[messages.length - 1]?.content || "";
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, GEMINI_API_KEY);
+    const { isImageRequest, style: detectedStyle } = await detectImageRequestWithAI(lastUserMessage, LOVABLE_API_KEY);
 
     if (isImageRequest && characterDescription) {
       const imageLimit = TIER_IMAGE_LIMITS[tier] || 3;
@@ -374,31 +373,29 @@ ALWAYS:
           ]
         : imagePrompt;
 
+      const aiHeaders = {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      };
+
       const [textResponse, imageResponse] = await Promise.all([
-        fetchWithRetry(GEMINI_API_URL, {
+        fetchWithRetry(AI_GATEWAY_URL, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${GEMINI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
+          headers: aiHeaders,
           body: JSON.stringify({
-            model: "gemini-2.5-flash",
+            model: "google/gemini-2.5-flash",
             messages: [
               { role: "system", content: systemPrompt + "\nThe user just asked for a photo. Respond naturally acknowledging you're sending a photo. Keep it to 1-2 sentences. Be simple and natural." },
               ...messages,
             ],
           }),
         }),
-        fetchWithRetry(GEMINI_API_URL, {
+        fetchWithRetry(AI_GATEWAY_URL, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${GEMINI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
+          headers: aiHeaders,
           body: JSON.stringify({
-            model: "gemini-2.0-flash-preview-image-generation",
+            model: "google/gemini-2.5-flash-image",
             messages: [{ role: "user", content: imageMessageContent }],
-            modalities: ["image", "text"],
           }),
         }),
       ]);
@@ -408,13 +405,15 @@ ALWAYS:
         const textData = await textResponse.json();
         textReply = textData.choices?.[0]?.message?.content || textReply;
       } else {
-        console.error("[CHAT] Text gen failed:", textResponse.status);
+        console.error("[CHAT] Text gen failed:", textResponse.status, await textResponse.text().catch(() => ''));
       }
 
       let imageUrl = null;
       if (imageResponse.ok) {
         const imgData = await imageResponse.json();
-        const base64Url = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        // Try multiple response formats
+        const base64Url = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url
+          || imgData.choices?.[0]?.message?.content?.match?.(/data:image\/[^;]+;base64,[^\s"]+/)?.[0];
         if (base64Url) {
           const base64Data = base64Url.replace(/^data:image\/\w+;base64,/, "");
           const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
@@ -423,7 +422,7 @@ ALWAYS:
           const { data: publicUrlData } = serviceClient.storage.from("character-avatars").getPublicUrl(fileName);
           imageUrl = publicUrlData.publicUrl;
         } else {
-          console.error("[CHAT] No image in response");
+          console.error("[CHAT] No image in response. Response:", JSON.stringify(imgData).slice(0, 500));
         }
       } else {
         console.error("[CHAT] Image gen failed:", imageResponse.status, await imageResponse.text().catch(() => ''));
@@ -479,14 +478,14 @@ ALWAYS:
     }
 
     // Standard streaming chat response
-    const response = await fetchWithRetry(GEMINI_API_URL, {
+    const response = await fetchWithRetry(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: "google/gemini-2.5-flash",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
@@ -494,12 +493,12 @@ ALWAYS:
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please try again later." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
