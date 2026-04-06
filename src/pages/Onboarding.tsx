@@ -36,11 +36,16 @@ export default function Onboarding() {
     try {
       await supabase
         .from('profiles')
-        .update({
-          nickname: nickname || user.displayName,
-          interests,
-        })
-        .eq('user_id', user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email,
+            display_name: user.displayName || user.email || 'User',
+            nickname: nickname || user.displayName || null,
+            interests,
+          },
+          { onConflict: 'user_id' }
+        );
     } catch {
       // Silent auto-save — errors handled at finish
     }
@@ -60,20 +65,22 @@ export default function Onboarding() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
-          nickname: nickname || user.displayName,
-          interests,
-          onboarding_completed: true,
-        })
-        .eq('user_id', user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            email: user.email,
+            display_name: user.displayName || user.email || 'User',
+            nickname: nickname || user.displayName || null,
+            interests,
+            onboarding_completed: true,
+          },
+          { onConflict: 'user_id' }
+        );
       if (error) throw error;
-      
-      // Refresh user state and wait for it to propagate
+
       await refreshUser();
-      
-      // Small delay to ensure state propagation before navigation
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       toast.success("You're all set! Let's go 🎉");
       navigate('/dashboard', { replace: true });
     } catch (err) {
