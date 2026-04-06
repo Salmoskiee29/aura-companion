@@ -30,6 +30,10 @@ export function useAuth() {
   return ctx;
 }
 
+function isMissingRowError(error: { code?: string } | null) {
+  return error?.code === 'PGRST116';
+}
+
 async function fetchUserRole(userId: string): Promise<AppRole> {
   try {
     const { data, error } = await supabase
@@ -37,11 +41,12 @@ async function fetchUserRole(userId: string): Promise<AppRole> {
       .select('role')
       .eq('user_id', userId)
       .limit(1)
-      .single();
-    if (error) {
+      .maybeSingle();
+
+    if (error && !isMissingRowError(error)) {
       console.error('fetchUserRole error:', error);
-      return 'user';
     }
+
     return (data?.role as AppRole) || 'user';
   } catch (e) {
     console.error('fetchUserRole exception:', e);
@@ -51,13 +56,19 @@ async function fetchUserRole(userId: string): Promise<AppRole> {
 
 async function fetchOnboardingStatus(userId: string): Promise<boolean> {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('onboarding_completed')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
+
+    if (error && !isMissingRowError(error)) {
+      console.error('fetchOnboardingStatus error:', error);
+    }
+
     return data?.onboarding_completed ?? false;
-  } catch {
+  } catch (e) {
+    console.error('fetchOnboardingStatus exception:', e);
     return false;
   }
 }
