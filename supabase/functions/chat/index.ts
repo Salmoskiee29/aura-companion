@@ -58,7 +58,7 @@ async function detectImageRequestWithAI(message: string, apiKey: string): Promis
   }
 
   try {
-    const resp = await fetch(GEMINI_API_URL, {
+    const resp = await fetchWithRetry(GEMINI_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -375,7 +375,7 @@ ALWAYS:
         : imagePrompt;
 
       const [textResponse, imageResponse] = await Promise.all([
-        fetch(GEMINI_API_URL, {
+        fetchWithRetry(GEMINI_API_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${GEMINI_API_KEY}`,
@@ -389,7 +389,7 @@ ALWAYS:
             ],
           }),
         }),
-        fetch(GEMINI_API_URL, {
+        fetchWithRetry(GEMINI_API_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${GEMINI_API_KEY}`,
@@ -479,7 +479,7 @@ ALWAYS:
     }
 
     // Standard streaming chat response
-    const response = await fetch(GEMINI_API_URL, {
+    const response = await fetchWithRetry(GEMINI_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${GEMINI_API_KEY}`,
