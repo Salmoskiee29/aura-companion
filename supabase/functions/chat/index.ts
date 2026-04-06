@@ -11,6 +11,23 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/
 
 const FREE_DAILY_LIMIT = 20;
 
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const resp = await fetch(url, options);
+    if (resp.status === 429 && attempt < maxRetries) {
+      const retryAfter = resp.headers.get("Retry-After");
+      const waitMs = retryAfter ? parseInt(retryAfter) * 1000 : Math.min(1000 * Math.pow(2, attempt), 8000);
+      console.log(`[CHAT] Rate limited, retrying in ${waitMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await resp.text(); // consume body
+      await new Promise(r => setTimeout(r, waitMs));
+      continue;
+    }
+    return resp;
+  }
+  // Should not reach here, but just in case
+  return fetch(url, options);
+}
+
 const TIER_CHAT_LIMITS: Record<string, number> = {
   free: FREE_DAILY_LIMIT,
   basic: 15,
