@@ -15,7 +15,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   
   if (!isAuthenticated) return <Navigate to="/auth?mode=login" replace />;
 
-  // Redirect users who haven't completed onboarding (skip for non-user roles and the onboarding page itself)
+  // Only redirect to onboarding for confirmed 'user' role accounts
+  // Skip for admin/developer/chatter to prevent race-condition redirects
   if (
     user?.role === 'user' &&
     !user.onboardingCompleted &&

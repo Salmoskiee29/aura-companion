@@ -22,6 +22,14 @@ export default function Onboarding() {
   const [interests, setInterests] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  // Redirect non-user roles away from onboarding
+  useEffect(() => {
+    if (user && user.role !== 'user') {
+      const target = user.role === 'admin' || user.role === 'developer' ? '/admin-panel' : '/dashboard';
+      navigate(target, { replace: true });
+    }
+  }, [user, navigate]);
+
   const totalSteps = 5;
 
   const toggleInterest = (interest: string) => {
